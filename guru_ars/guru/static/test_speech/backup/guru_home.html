@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+ <head>
+  <meta charset="utf-8">
+  <title>Guru</title>
+ </head>
+ <body>
+<div class="l-showcase-content">
+            <div id="speech_demo_section">
+              <h2 class="text-headline" id="convert-your-voice-to-text-right-now"></h2>
+              <div class="speech-demo-container" id="speech_demo_record_container">
+                <div class="speech-demo-option-container">
+                  <select id="speech_demo_record_language" name="speech_demo_record_language">
+                    <option value="en-IN" selected="selected">English (India)</option>
+                  </select>
+                </div>
+                <div class="speech-demo-button-container">
+                  <a class="speech-demo-button" id="speech_demo_record_button" track-type="speech-api" track-name="click-microphone">
+                    <div class="material-icons" id="speech_demo_record_icon"></div>
+                    Record
+                    <div id="speech_demo_record_caption">
+                      <div id="speech_demo_record_processing" style="display: none;"></div>
+                      <div id="speech_demo_record_timer" style="display: none;"></div>
+                    </div>
+                  </a>
+                </div>
+                <div id="speech_demo_captcha_container" style="display: none;">
+                  <div id="speech_demo_captcha" class="g-recaptcha" data-sitekey="6LflICITAAAAAAZxPkjTDmZO6GwWmOokPslJmFSa" data-callback="globalCaptchaSuccess"></div>
+                
+                </div>
+              </div>
+            </div>
+            <div id="speech_demo_unavailable">
+            </div>
+            <div id="speech_demo_results_container" style="display: block;">
+              <div id="speech_demo_results">No speech detected</div>
+              <pre id="speech_demo_results_code">{}</pre>
+            </div>
+            <div id="speech_demo_error_container" style="display: none;">
+              <span class="material-icons">error</span>
+              <span>We are unable to process your request at this time. Please try again later.</span>
+            </div>
+          </div>
+
+
+    <script src="./scripts/recorder-bundle.js"></script>
+    <script src="./scripts/demo.js"></script>
+  </body>
+</html>
+

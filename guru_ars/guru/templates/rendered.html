@@ -1,0 +1,30 @@
+<script src="https://code.highcharts.com/highcharts.js"></script>
+<div id="header_main"></div>
+<div id="section_1"> 
+    <div id="section_1_header" class='_header'></div>
+    <div id="section_1_body" class='_body'></div>
+</div>
+<div id="section_2">
+    <div id="section_2_header" class='_header'></div>
+    <div id="section_2_body" class='_body'></div>
+</div>
+<div id="section_3">
+    <div id="section_3_header" class='_header'></div>
+    <div id="section_3_body" class='_body'></div>
+</div>
+<div id="section_4">
+    <div id="section_4_header" class="_header"></div>
+    <div id="section_4_body" class="_body"></div>
+</div>
+<div id="section_5">
+    <div id="section_5_header" class="_header"></div>
+    <div id="section_5_body" class="_body"></div>
+</div>
+
+<style>
+</style>
+<script type="text/javascript">
+    //new Highcharts.Chart();
+    document.getElementById("section_1_header").innerHTML = "";new Highcharts.Chart({"xAxis":{"type":"datetime","title":{"text":"created_date"}},"chart":{"width":928,"height":520,"renderTo":"section_1_body","backgroundColor":"#2a2a2a","type":"line"},"title":{"text":"Report"},"yAxis":[{}],"series":[{"name":["ros_week","AR"],"yAxis":0,"data":[[1483228800000,0.0945945946],[1483315200000,0.0613157895]]}],"legend":{"enabled":true},"colors":["#5290e9","#71b37c","#ec932f","#e14d57","#965994","#9d7952","#cc527b","#33867f","#ada434"],"plotOptions":{"spline":{"marker":{"lineWidth":1,"radius":4,"lineColor":"#666666"}}}});
+</script>
+ 
