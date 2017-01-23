@@ -1,0 +1,25 @@
+<div class="html-resp">
+  <table class="table table-hover">
+    {% if header %}
+    <thead>
+      <tr>
+        {% for item in header %}
+        <th>{{ item }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    {% endif %}
+
+    {% if rows %}
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        {% for column in row %}
+        <td>{{ column }}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+    {% endif %}
+  </table>
+</div>

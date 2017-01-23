@@ -1,0 +1,167 @@
+<html>
+<head>
+
+<style type="text/css">@charset "UTF-8";[ng\:cloak],[ng-cloak],[data-ng-cloak],[x-ng-cloak],.ng-cloak,.x-ng-cloak,.ng-hide:not(.ng-hide-animate){display:none !important;}ng\:form{display:block;}.ng-animate-shim{visibility:hidden;}.ng-anchor{position:absolute;}</style><meta charset="utf-8"><meta content="width=device-width,initial-scale=1" name="viewport"><title>Guru</title><link href="font-awesome.min.css" rel="stylesheet"><link href="material-design-iconic-font.min.css" rel="stylesheet"><link href="sweetalert.css" rel="stylesheet"><link href="bootstrap.min.css" rel="stylesheet"><link href="app.css" rel="stylesheet">
+<style>
+.lv-item:not(.right) .ms-item {
+color: #fff;
+}
+</style>
+</head>
+
+<body>
+<div class="lv-body">
+
+<div class="message ng-scope text">
+	<div class="lv-item media ng-scope">
+		<div class="lv-avatar pull-left ng-scope" ><i class="c-blue zmdi zmdi-comments"></i>
+		</div>
+		<div class="media-body">
+			<div class="ms-item ng-binding bgm-blue">
+            plot sell thru report for gant
+            </div>
+		</div>
+	</div>
+</div>
+</br>
+
+<div ng-app="myModule">
+    <script src="js/angular.min.js"></script>
+    <script src="js/highcharts.js"></script>
+
+<div ng-controller="myController">
+<div id="container">
+</div>
+
+<div>
+</div>
+</div>
+
+ <script>
+        angular.module('myModule', [])
+            .controller('myController', function ($scope) {
+                Highcharts.chart('container', {
+
+        //"series": [{"type": "line", "data": [["2017-01-08T00:00:00", 0.0945945945945946], ["2017-01-09T00:00:00", 0.06131578947368421]], "name": "AR"}],
+
+        series:[{'type': 'line', 'data': [['2017-01-03T00:00:00', 27.424259259259266], ['2017-01-04T00:00:00', 27.507870370370373], ['2017-01-05T00:00:00', 27.663796296296297], ['2017-01-06T00:00:00', 28.131203703703708], ['2017-01-07T00:00:00', 28.49425925925927], ['2017-01-08T00:00:00', 28.693796296296302], ['2017-01-09T00:00:00', 28.42787037037037], ['2017-01-10T00:00:00', 28.659444444444443]], 'name': 'GA'}],
+
+        "chart":{
+          "alignTicks":false,
+          "backgroundColor":null,
+          "borderColor":"#2A2A2A",
+          "marginTop":20,
+          "plotBackgroundColor":null,
+          "plotBorderWidth":null,
+          "plotShadow":false,
+          "spacingLeft":5,
+          "spacingRight":20,
+          "spacingTop":20,
+          "style":{
+            "cursor":"auto"
+          },
+        },
+        "colors": [
+          "#5290e9", //blue
+          "#71b37c", //green
+          "#ec932f", //Orange
+          "#e14d57", //red
+          "#965994", //violet
+          "#9d7952", //brown
+          "#cc527b",
+          "#33867f",
+          "#ada434"
+        ],
+        "credits":{
+          "enabled":false
+        },
+        "plotOptions":{
+          "area":{
+            "stacking":null,
+            "shadow":false
+          },
+          "areaspline":{
+            "shadow":false,
+            "stacking":null
+          },
+          "column":{
+            "borderWidth":0,
+            "groupPadding":0.07,
+            "pointPadding":0.05,
+            "shadow":false,
+            "stacking":null
+          },
+          "pie": {
+            "dataLabels": {
+
+                "color": "#707070",
+                "format": '{y}',
+                "distance": 8
+            },
+            "showInLegend": true
+          },
+          "line":{
+            "shadow":false,
+            "stacking":null
+          },
+          "series":{
+            "animation":true,
+            "events":{
+
+            },
+            "fillOpacity":0.2,
+            "pointStart":0
+          },
+          "spline":{
+            "shadow":false,
+            "stacking":null
+          },
+          "bubble": {
+            "cursor": "pointer",
+            "marker": {
+              "states": {
+                "select": {
+                  "fillColor": "#e14d57",
+                  "lineColor": "#9d1b23"
+                }
+              }
+            }
+          }
+        },
+        "legend": {
+
+          "itemStyle": {"color": "#707070"}
+        },
+        "xAxis": {
+
+          "type": "category"
+        },
+        "yAxis": {
+
+          "allowDecimals": false,
+          "gridLineColor": "transparent"
+        },
+        "title":{
+          "text":null
+        },
+        "tooltip":{
+          "borderRadius":4,
+          "borderWidth":2,
+          "style":{
+            "fontFamily":"Arial,  Helvetica, sans-serif",
+            "fontSize":"13px",
+            "cursor":"default"
+          },
+          "shared": true
+        }
+
+
+                });
+            });
+
+</script>
+
+
+</div>
+</body>
+</html>

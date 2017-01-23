@@ -1,0 +1,41 @@
+{
+  "line": [{
+
+    "type": "line",
+    "name": "series1",
+    "data": [["Apples", 5],["Oranges", 10], ["Grapes", 20]]
+  }, {
+
+    "type": "line",
+    "name": "series2",
+    "data": [["Apples", 10], ["Oranges", 20], ["Grapes", 30]]
+  }],
+  "pie": [{
+
+    "type": "pie",
+    "data": [{"name": "Apples", "y": 5},{"name": "Oranges", "y": 10},
+             {"name": "Grapes", "y": 20}]
+  }],
+  "area": [{
+
+    "type": "area",
+    "name": "series1",
+    "data": [["Apples", 5],["Oranges", 10], ["Grapes", 20]]
+  }, {
+
+    "type": "area",
+    "name": "series2",
+    "data": [["Apples", 10], ["Oranges", 20], ["Grapes", 30]]
+  }],
+  "column": [{
+
+    "type":"column",
+    "name": "series1",
+    "data": [["Apples", 5],["Oranges", 10], ["Grapes", 20]]
+  }, {
+
+    "type": "column",
+    "name": "series2",
+    "data": [["Apples", 10], ["Oranges", 20], ["Grapes", 30]]
+  }]
+}

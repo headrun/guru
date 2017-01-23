@@ -1,0 +1,8 @@
+<div class="dashboard-content-wrapper" ng-class="{'loading': $ctrl.isLoading }">
+
+  <header user="$ctrl.user"></header>
+
+  <div class="dashboard-content" ui-view
+       autoscroll="false"></div>
+  <div class="loading-overlay"></div>
+</div>

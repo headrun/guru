@@ -1,0 +1,42 @@
+<div class="login-form-container">
+  <form method="POST" name="userForm"
+        ng-submit="$ctrl.onSubmit($ctrl.credentials)"
+        novalidate
+        ng-class="{error: $ctrl.errorMsg}">
+
+    <div class="logo-container">
+      <a href='/'><img src="<%= static("images/logo.png") %>" /></a>
+    </div>
+
+    <div class="form-group error-msg">
+      <span >{{$ctrl.errorMsg}}</span>
+    </div>
+
+    <div class="form-group" >
+      <label>USERNAME</label>
+      <input type="text" name="uName" ng-model="$ctrl.credentials.username"
+             class="form-control " required />
+      <span class="field-error"
+            ng-show="userForm.uName.$touched">
+        <span ng-show="userForm.uName.$error.required">Username is required.</span>
+      </span>
+    </div>
+
+    <div class="form-group">
+      <label>PASSWORD</label>
+      <input type="password" name="uPassword"
+             ng-model="$ctrl.credentials.password"
+             class="form-control" required />
+      <span class="field-error" ng-show="userForm.uPassword.$touched">
+        <span ng-show="userForm.uPassword.$error.required">Password is required</span>
+      </span>
+    </div>
+
+    <div class="form-group">
+      <input type="submit"
+             ng-disabled="userForm.uName.$error.required || userForm.uPassword.$error.required || $ctrl.viewSubmit"
+             class="btn btn-primary"
+             value="{{$ctrl.loadingText}}"/>
+    </div>
+  </form>
+</div>

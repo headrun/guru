@@ -1,0 +1,32 @@
+<div class="messages-container">
+
+  <div class="message" 
+       ng-repeat="message in messages"
+       ng-class="{'html': message.type === 'html',
+                  'js': message.type === 'js',
+                  'text': message.type === 'text'}">
+    <div class="lv-item media"
+         ng-class="{'right': !(message.dummy || message.inAnswerTo)}"
+         ng-if="message.type === 'text'">
+      <div class="lv-avatar pull-left"
+           ng-if="(message.dummy || message.inAnswerTo)">
+        <i class="zmdi zmdi-comments c-blue"></i>
+      </div>
+      <div class="media-body">
+        <div class="ms-item"
+             ng-class="{'bgm-blue': (message.dummy || message.inAnswerTo)}">
+          {{ message.data }}
+        </div>
+        <small class="ms-date"
+               ng-if="!(message.dummy || message.inAnswerTo)">
+          <i class="zmdi zmdi-check-all c-blue"></i>
+          20/02/2015 at 09:00
+        </small>
+      </div>
+    </div>
+
+    <div class="html-content-wrapper"
+         ng-if="message.type === 'html'"
+         bind-html-compile="message.data"></div>
+  </div>
+</div>

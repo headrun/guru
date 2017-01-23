@@ -1,0 +1,46 @@
+@import (reference) "../header/header";
+@import (reference) "../../less/mixins";
+
+dashboard {
+
+  display: block;
+  .cover;
+
+  div.dashboard-content-wrapper {
+
+    .cover;
+    div.dashboard-content {
+
+      display: block;
+      .cover;
+      padding-top: @header_height;
+      padding-bottom: 10px;
+    }
+
+    &.loading {
+
+      div.dashboard-content {
+
+        .opacity(0.2);
+      }
+
+      div.loading-overlay {
+
+        display: block;
+      }
+    }
+
+    div.loading-overlay {
+
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      .cover;
+      z-index: 1;
+      background: transparent url(/images/preloader.gif) center center no-repeat;
+    }
+  }
+}

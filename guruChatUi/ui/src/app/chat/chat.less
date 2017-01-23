@@ -1,0 +1,92 @@
+@import (reference) "../../less/mixins";
+
+chat {
+
+  display: block;
+  .cover;
+
+  div.container {
+
+    height: 100%;
+
+    #messages-main {
+
+      .cover;
+
+      .ms-body {
+
+        .cover;
+        padding: 0;
+
+        div.lv-message {
+
+          .cover;
+          position: relative;
+          padding-top: 65px; //header height
+          padding-bottom: 65px; //footer height
+
+          .lv-avatar > i {
+
+            font-size: 35px;
+          }
+
+          .lv-header-alt, .lv-footer {
+
+            position: absolute;
+            left: 0;
+            width: 100%;
+          }
+
+          .lv-header-alt {
+
+            top: 0;
+
+            .lvh-label {
+
+              &> span {
+
+                font-size: 18px;
+              }
+            }
+          }
+
+          .lv-body {
+
+            .cover;
+            position: relative;
+
+            .lv-item {
+
+              padding: 2px 20px;
+
+              .lv-avatar {
+
+                width: 25px;
+                height: 25px;
+
+                &> i {
+
+                  font-size: 25px;
+                }
+              }
+            }
+          }
+
+          .lv-footer {
+
+            bottom: 0;
+            box-shadow: none;
+
+            &> textarea {
+
+              height: 35px;
+              padding-right: 60px;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+@import "messages";

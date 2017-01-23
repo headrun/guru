@@ -21,6 +21,7 @@ from django.conf import settings
 from .settings import DOMAIN_NAME
 from .actions import *
 from .guru_responses import *
+from .renderers import *
 
 module_dir = os.path.dirname(__file__)  #get current directory
 
@@ -160,17 +161,13 @@ def get_answer(request):
                 answer['type']= "message"
 
                 if prev_query and reply and email_address:
+                    print(prev_query, reply)
+                    answer = prepare_report_and_send_mail(
+                            nl_query=prev_query,
+                            data=reply,
+                            email_address=email_address
+                        )
 
-                    msg = '<h3>Query: %s</h3> <br><br>'%prev_query
-                    msg += reply
-
-                    status= send_mail_alt(msg, email_address, 'Gurubot')
-
-                    if status == 1:
-                        answer['data'] = get_resp_mail_success(email_address)
-                    else:
-                        answer['data'] = "Problem sending mail to "+ email_address + \
-                                    ". Make sure you have entered a valid Email Address."
                 else:
                     answer['data'] = "Nothing to send."
 
@@ -315,7 +312,7 @@ def generate_report_and_send_mail(nl_query, data, email_address):
     print(_command)
     _output = os.system(_command)
 
-    msg= '<h3>Query: %s</h3><br><br>\
+    msg= '<h3>Query: %s</h3><br>\
                 <img style="background-color:#2a2a2a" \
                 src= "http://%s/%s">'%(nl_query, DOMAIN_NAME, 'static/assets/img/' + name + '.png')
 
@@ -330,4 +327,44 @@ def generate_report_and_send_mail(nl_query, data, email_address):
                     Make sure you have entered a valid Email Address."
     return answer
 
+def prepare_report_and_send_mail(nl_query, data, email_address):
+
+    html_file = os.path.join(settings.BASE_DIR, 'guru/templates/report_templates/'+'_'.join(str(timezone.now()).split())+'.html')
+    #prepare HTML Report.
+    r_html = GenerateHtml(save_in=html_file)
+    data = eval(data)
+
+    r_html.append(type='message', data=nl_query)
+    if data['type'] == 'table':
+        r_html.append(type='table', data=data['data'])
+    elif data['type'] == 'chart':
+        r_html.append(type='chart', data="series:"+str(data['data']))
+
+    r_html.generate() #report created.
+
+    #Now convert HTML Report to an Image using phantomjs.
+    i_name = '_'.join(str(timezone.now()).split())
+    image_file = os.path.join(settings.BASE_DIR,'guru/static/assets/img/'+i_name+'.png')
+
+    _phantom = os.path.join(settings.BASE_DIR, 'phantom/bin/phantomjs')
+    _script = os.path.join(settings.BASE_DIR, 'html_to_image.js')
+    _command = _phantom+' '+_script+' '+html_file+' '+image_file
+
+    print(_command)
+    _output = os.system(_command)
+
+    os.remove(html_file)
+
+    msg= '<img src= "http://%s/%s">'%(DOMAIN_NAME, 'static/assets/img/'+i_name+'.png')
+
+    status= send_mail_alt(msg, email_address, 'guruBOT Automated Response')
+
+    answer= {}
+    answer['type']= "message"
+    if status == 1:
+        answer['data'] = get_resp_mail_success(email_address)
+    else:
+        answer['data'] = "Problem sending mail to "+ email_address + ". \
+                    Make sure you have entered a valid Email Address."
+    return answer
 

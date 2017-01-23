@@ -1,0 +1,8 @@
+from __future__ import unicode_literals
+
+from django.apps import AppConfig
+
+
+class MailerConfig(AppConfig):
+    name = 'mailer'
+    label = "headrun_bootstrap_mailer"

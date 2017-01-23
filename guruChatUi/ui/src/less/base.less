@@ -1,0 +1,50 @@
+@import (reference) "mixins";
+
+html, body, body > div.app {
+
+  .cover;
+}
+
+body {
+
+  background-color: @body-bg;
+  color: @text-color;
+  overflow: hidden;
+  padding-top: @navbar-height;
+  font-size: 15px;
+}
+
+body > div.app {
+
+  &> div.loading-overlay {
+
+    .cover;
+    display: table;
+    position: absolute;
+    top: 0;
+    left: 0;
+
+    &> div {
+
+      display: table-cell;
+      vertical-align: middle;
+      text-align: center;
+      font-size: 1.5em;
+    }
+  }
+
+  &> div.content {
+
+    .cover;
+  }
+
+  select.form-control {
+
+    font-size: 14px;
+    padding: 4px 4px 4px 0;
+    border: solid 1px @widget-border;
+    background-color: @widget-bg;
+    color: @text-color;
+    margin: 0;
+  }
+}

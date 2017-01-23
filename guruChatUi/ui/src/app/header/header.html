@@ -1,0 +1,23 @@
+<nav class="navbar navbar-default navbar-fixed-top clearfix"
+     ng-class="{collapsed: $ctrl.collapsed}">
+
+  <a ng-click="$ctrl.toggleCollapse()"
+     class="pull-left brand">
+     <img src="<%= static("images/buzzinga_logo_web_white.png") %>"/>
+  </a>
+
+  <ul class="nav navbar-nav pull-right">
+    <li ng-repeat="tab in $ctrl.tabs"
+        ng-class="{ 'active': $ctrl.activeTab === tab.name }">
+      <a ui-sref="{{ tab.fullName + '({state: tab.state})' }}">
+        {{ tab.text }}
+      </a>
+    </li>
+    <li ng-if="$ctrl.user">
+      <a class="m-0">
+        <b>Hello!</b> {{ $ctrl.user.userName }}
+      </a>
+    </li>
+    <li><logout></logout></li>
+  </ul>
+</nav>
