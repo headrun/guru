@@ -25,7 +25,7 @@ from .renderers import *
 
 module_dir = os.path.dirname(__file__)  #get current directory
 
-CLIENT_ACCESS_TOKEN = "fef4ba6d97ad4409a820a31f8241234f"
+CLIENT_ACCESS_TOKEN = "05f1939c5abe4254be0efc147997734e"
 
 import apiai
 ai = apiai.ApiAI(CLIENT_ACCESS_TOKEN)
@@ -71,8 +71,8 @@ def get_answer(request):
     answer = {}
     print('\n'*2)
 
-    #if True:
-    try:
+    if True:
+    #try:
         #apiai request
         req = ai.text_request()
         req.query = user_query
@@ -272,8 +272,8 @@ def get_answer(request):
 
             return JsonResponse({'result':answer['data'], 'info':raw_info})
 
-    except Exception as e:
-    #if False:
+    #except Exception as e:
+    if False:
         print('\n')
         print('actual error:')
         print(e, 'line:', sys.exc_info()[-1].tb_lineno)

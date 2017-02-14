@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+ <head>
+  <title>ARS</title>
+  
+ </head>
+ <button type="button" id="debugBtn" class='button' style="right:3%; bottom:5%; position:fixed;display:none"><img height="40px" width="40px" src="/static/icons/info1.png" title='info for nerds'/></button>
+ <a href= "/logout"><button type="button" class='button' style="right:3%; top:4%; position:fixed;"><img height="30px" width="30px" src="/static/icons/logout.png" title='logout'/></button></a>
+ <body>
+    <div class="center-block" style="margin-top:15%;width:45%;" id="searchDiv">
+     	<div id="logoDiv" align="center">
+        	<a href="#"><img src="/static/guru_logo.png" id="logo"></a>
+     	</div><br>
+     	<div id="searchBoxDiv">
+      		<div class="input-group">
+        		<span class="input-group-addon">
+        	  		<i class="fa fa-microphone fa-2x" title="Click on me to Speak" aria-hidden="true" onclick = "HR.startDictation()"></i>
+        		</span>
+		        <input type="text" class="form-control" placeholder="Speak or Write" 
+                		          id="transcript" 
+		                          name = "query"
+                		          style = "height: 50px; font-size: 17px;">
+		        <span class="input-group-addon">
+			        <button type="submit" id="submit" 
+						      title="Search"
+                        		              class="glyphicon glyphicon-search btn btn-primary" 
+		                                      style = ""></button>
+		        </span>
+      		</div>
+	        <!--<h4 style = "color: #fff">Result: </h4>-->	
+	</div>
+    <div id="examples">
+        <span class= 'ex'>Example:  plot ros report for Arrow</span><span class='more'> <a target= "_blank" title= "click for more queries" href= "/queries">more...</a></span>    
+        </div>
+
+   </div>
+   <div class="loading"></div>
+   <div id= "finalResultShow" style="width: 100%; height: 450px">
+      <div class = "container">
+	<table class = "table" id = "result_table" style = "">
+		<thead>
+			<tr></tr>
+		</thead>
+		<tbody></tbody>
+	</table>
+
+	<div id="results_graph"></div>
+	<div id="results_message"></div>
+        <br><br>
+        <!--<h4 style = "color: #fff">Debug Here: </h4><br>-->
+        <pre id= "result_raw_info" style="text-align:center;"></pre>
+     </div>
+  </div>
+
+  <!-- Modal -->
+  <div id="sendMailModal" class="modal fade" role="dialog">
+  <div class="modal-dialog modal-sm">
+
+    <!-- Modal content-->
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title">Send Mail</h4>
+      </div>
+      <div class="modal-body">
+        <form class="form" role="form">
+        {% csrf_token %}
+            <div class="form-group">
+                <input type="email" class="form-control" id="email" placeholder="Enter E-Mail Address">
+            </div>
+            <div class="form-group">
+                <input type="text" class="form-control" id="subject" placeholder="Enter The Subject">
+            </div>
+            <div id="msgDiv" align="center"></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" id="submitMail">Send</button>
+      </div>
+    </div>
+    
+  </div>
+</div> 
+
+  <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.2/jquery.min.js"></script>
+  <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+  <script src="https://use.fontawesome.com/0b6f858e9c.js"></script>
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <script src="https://code.highcharts.com/modules/exporting.js"></script>
+  <Script src="http://gabelerner.github.io/canvg/rgbcolor.js"></Script>
+  <script src="http://pamidi.me/canvg.min.js"></script>
+  <link rel="stylesheet" href="/static/css/ars.css">
+  <Script src="/static/js/ars.js"></Script>
+  </body>
+</html>
+

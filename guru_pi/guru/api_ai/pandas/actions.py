@@ -16,12 +16,12 @@ from .guru_responses import *
 
 module_dir = os.path.dirname(__file__)
 
-#table_base = load_hdf(os.path.join(module_dir, 'dumps/Telenor_Myanmar_Base_Jun_Sep_2016.h5'))
-#table_gross = load_hdf(os.path.join(module_dir, 'dumps/Telenor_Myanmar_Gross_Jul_Sep_2016.h5'))
-#table_gross['abs_gross'] = table_gross['abs_base']
-#del table_gross['abs_base']
-table_base = load_hdf(os.path.join(module_dir, 'dumps/Base_Ver3.h5'))
-table_gross = load_hdf(os.path.join(module_dir, 'dumps/Gross_Ver3.h5'))
+#table_sniper = load_hdf(os.path.join(module_dir, 'dumps/Telenor_Myanmar_Base_Jun_Sep_2016.h5'))
+#table_sniper = load_hdf(os.path.join(module_dir, 'dumps/Telenor_Myanmar_Gross_Jul_Sep_2016.h5'))
+#table_sniper['abs_gross'] = table_gross['abs_base']
+#del table_sniper['abs_base']
+table_sniper = load_hdf(os.path.join(module_dir, 'dump_new/sniper_data.h5'))
+#table_sniper = load_hdf(os.path.join(module_dir, 'dumps/Gross_Ver3.h5'))
 
 
 class ParsingError(Exception):
@@ -55,6 +55,12 @@ def df_to_chart_data(_df, type='line'):
     return json_data
 
 def levels(_df, _type):
+    print(_df)
+    if isinstance(_df, pd.Series):
+        print('yes')
+    else:
+        print('no')
+    print(_df.index.nlevels)
     for key in _df.index.get_level_values(level=0).unique():
         if _df.xs(key).index.nlevels > 1:
             levels(_df.xs(key, _type))
@@ -157,8 +163,7 @@ def get_tbname(parameters):
 """
 
 table_column_map = {
-        'table_base' : [('df', 'table_base')],
-        'table_gross' : [('df', 'table_gross')],
+        'table_sniper' : [('df', 'table_sniper')],
         'data' : [('df', 'data')],
         }
 
@@ -212,76 +217,22 @@ def agg_func_list_to_str(agg_func_list, df):
         print(agg_func_str)
         return agg_func_str
 
-def get_abs_base(entities, source):
-    columns = ['operator_name', 'abs_base']
-    group_by = ['operator_name']
-    condition_list, columns = get_conditions(entities, columns)
-    #agg_func_list, columns = get_agg_functions(entities, columns)
-    if 'month' in columns:
-        columns.extend(['year', 'start_date'])
-        group_by.extend(['month', 'year', 'start_date'])
-    if 'month' not in columns:
-        condition_list.append("(<<df>>.<<start_date>>.isin(pd.date_range(start=timezone.now().date()-timezone.timedelta(days=365), periods=365, freq='D')))")
-        #condition_list.append("(<<df>>['<<date>>']=='2016-10-20')")
-        columns.extend(['year', 'month', 'start_date'])
-        group_by.extend(['year', 'month', 'start_date'])
-
-    if 'geo_city_name' in columns:
-        group_by.append('geo_city_name')
-    if 'geo_rgn_name' in columns:
-        group_by.append('geo_rgn_name')
-    if 'geo_cnty_name' in columns:
-        group_by.append('geo_cnty_name')
-
-    tb_name = 'table_base' #get_tbname(columns)
-    #modify column_names as per the table
-    #columns = modify_columns(tb_name, columns)
-    conditions = ' & '.join(condition_list)
-    if conditions:
-        query = "{tb_name}.ix[{conditions}][{columns}]".format(\
-                    tb_name=tb_name, conditions=conditions, columns=columns)
-    else:
-        query = "{tb_name}[{columns}]".format(
-                    tb_name=tb_name, conditions=conditions, columns=columns)
-
-    if not query:
-        return error_mesg(get_resp_negative())
-
-    query = modify_query(tb_name, query)
-    print(query)
-
-    # execution
-    try:
-        #get rows and columns
-        t1 = eval(query)
-        data = t1.groupby(group_by).sum()
-        data = data.reset_index().sort_values(by=['start_date'])
-        del data['start_date']
-        data = data.round(2)
-        data.fillna('-', inplace=True)
-        data.columns = beautify_columns(list(data.columns))
-    except Exception as e:
-        print(e)
-        return error_mesg(get_resp_negative())
-
-    if data.empty:
-        return error_mesg(get_resp_no_records())
-    res = []
-
-    if source == 'web':
-         # generate graph or table or text
-        res.append(generate_result(data, 'text', section=1))
-    else:
-        json_data = df_to_table_data(data)
-        res.append({"type":"message", "data": get_resp_positive()})
-        res.append({"type":"table", "data":json_data})
-    return res
-
 def get_base_share(entities, source):
-    columns = ['operator_name', 'abs_base']
+    columns = ['operator_name']
     group_by = ['operator_name']
     condition_list, columns = get_conditions(entities, columns)
     #agg_func_list, columns = get_agg_functions(entities, columns)
+    kpi_filter = entities.get('kpi_filter')
+    if kpi_filter:
+        kpi_abs = kpi_filter+'_base'
+    else:
+        kpi_abs = 'abs_base'
+
+    columns.append(kpi_abs)
+
+    keywords = entities.get('keyword', [])
+    columns += [k for k in keywords if k not in columns]
+
     if 'month' in columns:
         columns.extend(['year', 'start_date'])
         group_by.extend(['month', 'year', 'start_date'])
@@ -292,23 +243,28 @@ def get_base_share(entities, source):
         columns.extend(['month', 'year', 'start_date'])
         group_by.extend(['month', 'year', 'start_date'])
 
+    pivot_index = ['operator_name']
     if 'geo_city_name' in columns:
         group_by.append('geo_city_name')
+        pivot_index.append('geo_city_name')
     if 'geo_rgn_name' in columns:
         group_by.append('geo_rgn_name')
+        pivot_index.append('geo_rgn_name')
     if 'geo_cnty_name' in columns:
         group_by.append('geo_cnty_name')
+        pivot_index.append('geo_cnty_name')
 
-    tb_name = 'table_base' #get_tbname(columns)
+    tb_name = 'table_sniper' #get_tbname(columns)
     #modify column_names as per the table
     #columns = modify_columns(tb_name, columns)
     final_filter = ''
     final_filters = []
+    _checks = ['operator_name', 'start_date', 'geo_rgn_name', 'geo_city_name']
     for cond in list(condition_list):
-        print(cond)
-        if ('operator_name' in cond) or ('start_date' in cond):
-            final_filters.append(cond)
-            condition_list.remove(cond)
+        for _cn in _checks:
+            if _cn in cond:
+                final_filters.append(cond)
+                condition_list.remove(cond)
 
     if final_filters:
         final_filter = ' & '.join(final_filters)
@@ -328,16 +284,14 @@ def get_base_share(entities, source):
 
     query = modify_query(tb_name, query)
     print(query)
-
+    chart_type = entities.get('viz_type')
     # execution
     try:
         #get rows and columns
         t1 = eval(query)
-        print(group_by)
         data = t1.groupby(group_by).sum()
-        print(data)
-        base_share = data.groupby(level=1).apply(lambda x : (x['abs_base']/sum(x['abs_base']))*100)
-        print("base:\n", base_share)
+        base_share = data.groupby(level=1).apply(lambda x : (x[kpi_abs]/sum(x[kpi_abs]))*100)
+        print("base:\n", base_share.head())
         if isinstance(base_share, pd.DataFrame):
             base_share = base_share.unstack()
             base_share.name = 'base_share'
@@ -345,19 +299,28 @@ def get_base_share(entities, source):
         else:
             base_share.index = base_share.index.droplevel(level=0)
         data['base_share'] = base_share
-        data = data.reset_index().sort_values(by=['start_date'])
-        print('l1', data.head())
+        data = data.reset_index().sort_values(by='start_date')
         if final_filter:
             _filters = modify_query('data', final_filter)
             print(_filters)
             data = data.ix[eval(_filters)]
-        print(data)
-        del data['start_date']
-        print('l2', data.head())
-        data = data.round(2)
+        if chart_type:
+            data['Month'] = data['month'].astype(str) +' '+ data['year'].astype(str)
+            data = data.groupby(['operator_name', 'Month', 'start_date']).mean().sort_index(level=2)
+            data.index = data.index.droplevel(level=2)
+            del data['year']
+            del data[kpi_abs]
+            if chart_type in ['bar', 'pie']:
+                data.index = data.index.droplevel(level=1)
+        else:
+            data = data.pivot_table(values=['base_share'], columns=['start_date', 'month'], index=pivot_index, aggfunc=np.sum)
+            data.columns = data.columns.droplevel([0, 1])
+            data = data.reset_index()
+
+        data = data.round(1)
         data.fillna('-', inplace=True)
         data.columns = beautify_columns(list(data.columns))
-        print('l3', data.head())
+        print('res:', data.head())
     except Exception as e:
         print('Error:', e)
         return error_mesg(get_resp_negative())
@@ -365,21 +328,38 @@ def get_base_share(entities, source):
     if data.empty:
         return error_mesg(get_resp_no_records())
     res = []
-
     if source == 'web':
          # generate graph or table or text
-        res.append(generate_result(data, 'text', section=1))
+        if chart_type:
+            res.append(generate_result(data, 'graph', section=1))
+        else:
+            res.append(generate_result(data, 'text', section=1))
     else:
-        json_data = df_to_table_data(data)
         res.append({"type":"message", "data": get_resp_positive()})
-        res.append({"type":"table", "data":json_data})
+        if chart_type:
+            json_data = df_to_chart_data(data, type=chart_type)
+            res.append({"type": "chart", "data":json_data})
+        else:
+            json_data = df_to_table_data(data)
+            res.append({"type":"table", "data":json_data})
     return res
 
-def plot_base_share(entities, source):
-    columns = ['operator_name', 'abs_base']
+def get_gross_share(entities, source):
+    columns = ['operator_name']
     group_by = ['operator_name']
     condition_list, columns = get_conditions(entities, columns)
     #agg_func_list, columns = get_agg_functions(entities, columns)
+    kpi_filter = entities.get('kpi_filter')
+    if kpi_filter:
+        kpi_abs = kpi_filter+'_gross'
+    else:
+        kpi_abs = 'abs_gross'
+
+    columns.append(kpi_abs)
+
+    keywords = entities.get('keyword', [])
+    columns += [k for k in keywords if k not in columns]
+
     if 'month' in columns:
         columns.extend(['year', 'start_date'])
         group_by.extend(['month', 'year', 'start_date'])
@@ -390,28 +370,34 @@ def plot_base_share(entities, source):
         columns.extend(['month', 'year', 'start_date'])
         group_by.extend(['month', 'year', 'start_date'])
 
+    pivot_index = ['operator_name']
     if 'geo_city_name' in columns:
         group_by.append('geo_city_name')
+        pivot_index.append('geo_city_name')
     if 'geo_rgn_name' in columns:
         group_by.append('geo_rgn_name')
+        pivot_index.append('geo_rgn_name')
     if 'geo_cnty_name' in columns:
         group_by.append('geo_cnty_name')
+        pivot_index.append('geo_cnty_name')
 
-    tb_name = 'table_base' #get_tbname(columns)
+    tb_name = 'table_sniper' #get_tbname(columns)
     #modify column_names as per the table
     #columns = modify_columns(tb_name, columns)
     final_filter = ''
     final_filters = []
+    _checks = ['operator_name', 'start_date', 'geo_rgn_name', 'geo_city_name']
     for cond in list(condition_list):
-        print(cond)
-        if ('operator_name' in cond) or ('start_date' in cond):
-            final_filters.append(cond)
-            condition_list.remove(cond)
+        for _cn in _checks:
+            if _cn in cond:
+                final_filters.append(cond)
+                condition_list.remove(cond)
 
     if final_filters:
         final_filter = ' & '.join(final_filters)
 
     conditions = ' & '.join(condition_list)
+    print(final_filters,'::', conditions)
 
     if conditions:
         query = "{tb_name}.ix[{conditions}][{columns}]".format(\
@@ -425,34 +411,43 @@ def plot_base_share(entities, source):
 
     query = modify_query(tb_name, query)
     print(query)
-
+    chart_type = entities.get('viz_type')
     # execution
     try:
         #get rows and columns
         t1 = eval(query)
-        print(group_by)
         data = t1.groupby(group_by).sum()
-        print(data)
-        base_share = data.groupby(level=1).apply(lambda x : (x['abs_base']/sum(x['abs_base']))*100)
-        print("base:\n", base_share)
-        if isinstance(base_share, pd.DataFrame):
-            base_share = base_share.unstack()
-            base_share.name = 'base_share'
-            base_share.index = base_share.index.droplevel(level=4)
+        gross_share = data.groupby(level=1).apply(lambda x : (x[kpi_abs]/sum(x[kpi_abs]))*100)
+        print("gross:\n", gross_share.head())
+        if isinstance(gross_share, pd.DataFrame):
+            gross_share = gross_share.unstack()
+            gross_share.name = 'gross_share'
+            gross_share.index = gross_share.index.droplevel(level=4)
         else:
-            base_share.index = base_share.index.droplevel(level=0)
-        data['base_share'] = base_share
-        data = data.reset_index().sort_values(by=['start_date'])
+            gross_share.index = gross_share.index.droplevel(level=0)
+        data['gross_share'] = gross_share
+        data = data.reset_index().sort_values(by='start_date')
         if final_filter:
             _filters = modify_query('data', final_filter)
+            print(_filters)
             data = data.ix[eval(_filters)]
-        data['Month'] = data['month'] +' '+ data['year']
-        data = data.groupby(['operator_name', 'Month', 'start_date']).mean().sort_index(level=2)
-        data.index = data.index.droplevel(level=2)
-        del data['abs_base']
-        data = data.round(2)
+        if chart_type:
+            data['Month'] = data['month'].astype(str) +' '+ data['year'].astype(str)
+            data = data.groupby(['operator_name', 'Month', 'start_date']).mean().sort_index(level=2)
+            data.index = data.index.droplevel(level=2)
+            del data['year']
+            del data[kpi_abs]
+            if chart_type in ['bar', 'pie']:
+                data.index = data.index.droplevel(level=1)
+        else:
+            data = data.pivot_table(values=['gross_share'], columns=['start_date', 'month'], index=pivot_index, aggfunc=np.sum)
+            data.columns = data.columns.droplevel([0, 1])
+            data = data.reset_index()
+
+        data = data.round(1)
         data.fillna('-', inplace=True)
         data.columns = beautify_columns(list(data.columns))
+        print('res:', data.head())
     except Exception as e:
         print('Error:', e)
         return error_mesg(get_resp_negative())
@@ -460,14 +455,281 @@ def plot_base_share(entities, source):
     if data.empty:
         return error_mesg(get_resp_no_records())
     res = []
-
     if source == 'web':
          # generate graph or table or text
-        res.append(generate_result(data, 'graph', section=1))
+        if chart_type:
+            res.append(generate_result(data, 'graph', section=1))
+        else:
+            res.append(generate_result(data, 'text', section=1))
     else:
-        json_data = df_to_chart_data(data)
-        res.append({"type":"message", "data": "Heres your Base Share Report."})
-        res.append({"type":"chart", "data":json_data})
+        res.append({"type":"message", "data": get_resp_positive()})
+        if chart_type:
+            json_data = df_to_chart_data(data, type=chart_type)
+            res.append({"type": "chart", "data":json_data})
+        else:
+            json_data = df_to_table_data(data)
+            res.append({"type":"table", "data":json_data})
+    return res
+
+def get_base_share_variance(entities, source):
+    columns = ['operator_name']
+    group_by = ['operator_name']
+    condition_list, columns = get_conditions(entities, columns)
+    #agg_func_list, columns = get_agg_functions(entities, columns)
+    kpi_filter = entities.get('kpi_filter')
+    if kpi_filter:
+        kpi_abs = kpi_filter+'_base'
+    else:
+        kpi_abs = 'abs_base'
+
+    columns.append(kpi_abs)
+
+    keywords = entities.get('keyword', [])
+    columns += [k for k in keywords if k not in columns]
+
+    if 'month' in columns:
+        columns.extend(['year', 'start_date'])
+        group_by.extend(['month', 'year', 'start_date'])
+
+    if 'month' not in columns:
+        condition_list.append("(<<df>>.<<start_date>>.isin(pd.date_range(start=timezone.now().date()-timezone.timedelta(days=365), periods=365, freq='D')))")
+        #condition_list.append("(<<df>>['<<date>>']=='2016-10-20')")
+        columns.extend(['month', 'year', 'start_date'])
+        group_by.extend(['month', 'year', 'start_date'])
+
+    pivot_index = ['operator_name']
+    if 'geo_city_name' in columns:
+        group_by.append('geo_city_name')
+        pivot_index.append('geo_city_name')
+    if 'geo_rgn_name' in columns:
+        group_by.append('geo_rgn_name')
+        pivot_index.append('geo_rgn_name')
+    if 'geo_cnty_name' in columns:
+        group_by.append('geo_cnty_name')
+        pivot_index.append('geo_cnty_name')
+
+    tb_name = 'table_sniper' #get_tbname(columns)
+    #modify column_names as per the table
+    #columns = modify_columns(tb_name, columns)
+    final_filter = ''
+    final_filters = []
+    _checks = ['operator_name', 'start_date', 'geo_rgn_name', 'geo_city_name']
+    for cond in list(condition_list):
+        for _cn in _checks:
+            if _cn in cond:
+                final_filters.append(cond)
+                condition_list.remove(cond)
+
+    if final_filters:
+        final_filter = ' & '.join(final_filters)
+
+    conditions = ' & '.join(condition_list)
+    print(final_filters,'::', conditions)
+
+    if conditions:
+        query = "{tb_name}.ix[{conditions}][{columns}]".format(\
+                    tb_name=tb_name, conditions=conditions, columns=columns)
+    else:
+        query = "{tb_name}[{columns}]".format(
+                    tb_name=tb_name, conditions=conditions, columns=columns)
+
+    if not query:
+        return error_mesg(get_resp_negative())
+
+    query = modify_query(tb_name, query)
+    print(query)
+    chart_type = entities.get('viz_type')
+    # execution
+    try:
+        #get rows and columns
+        t1 = eval(query)
+        data = t1.groupby(group_by).sum()
+        base_share = data.groupby(level=1).apply(lambda x : (x[kpi_abs]/sum(x[kpi_abs]))*100)
+        print("base:\n", base_share.head())
+        if isinstance(base_share, pd.DataFrame):
+            base_share = base_share.unstack()
+            base_share.name = 'base_share'
+            base_share.index = base_share.index.droplevel(level=4)
+        else:
+            base_share.index = base_share.index.droplevel(level=0)
+        data['base_share'] = base_share
+        data = data.sort_index(level=3)
+        data['base_share_variance'] = data.groupby(level=0)['base_share'].diff()
+        print('base_share_variance', data.head())
+        data = data.reset_index().sort_values(by='start_date')
+        if final_filter:
+            _filters = modify_query('data', final_filter)
+            print(_filters)
+            data = data.ix[eval(_filters)]
+        if chart_type:
+            data['Month'] = data['month'].astype(str) +' '+ data['year'].astype(str)
+            data = data.groupby(['operator_name', 'Month', 'start_date']).mean().sort_index(level=2)
+            data.index = data.index.droplevel(level=2)
+            del data['year']
+            del data[kpi_abs]
+            if chart_type in ['bar', 'pie']:
+                data.index = data.index.droplevel(level=1)
+        else:
+            data = data.pivot_table(values=['base_share_variance'], columns=['start_date', 'month'], index=pivot_index, aggfunc=np.sum)
+            data.columns = data.columns.droplevel([0, 1])
+            data = data.reset_index()
+
+        data = data.round(1)
+        data.fillna('-', inplace=True)
+        data.columns = beautify_columns(list(data.columns))
+        print('res:', data.head())
+    except Exception as e:
+        print('Error:', e)
+        return error_mesg(get_resp_negative())
+
+    if data.empty:
+        return error_mesg(get_resp_no_records())
+    res = []
+    if source == 'web':
+         # generate graph or table or text
+        if chart_type:
+            res.append(generate_result(data, 'graph', section=1))
+        else:
+            res.append(generate_result(data, 'text', section=1))
+    else:
+        res.append({"type":"message", "data": get_resp_positive()})
+        if chart_type:
+            json_data = df_to_chart_data(data, type=chart_type)
+            res.append({"type": "chart", "data":json_data})
+        else:
+            json_data = df_to_table_data(data)
+            res.append({"type":"table", "data":json_data})
+    return res
+
+def get_gross_share_variance(entities, source):
+    columns = ['operator_name']
+    group_by = ['operator_name']
+    condition_list, columns = get_conditions(entities, columns)
+    #agg_func_list, columns = get_agg_functions(entities, columns)
+    kpi_filter = entities.get('kpi_filter')
+    if kpi_filter:
+        kpi_abs = kpi_filter+'_gross'
+    else:
+        kpi_abs = 'abs_gross'
+
+    columns.append(kpi_abs)
+
+    keywords = entities.get('keyword', [])
+    columns += [k for k in keywords if k not in columns]
+
+    if 'month' in columns:
+        columns.extend(['year', 'start_date'])
+        group_by.extend(['month', 'year', 'start_date'])
+
+    if 'month' not in columns:
+        condition_list.append("(<<df>>.<<start_date>>.isin(pd.date_range(start=timezone.now().date()-timezone.timedelta(days=365), periods=365, freq='D')))")
+        #condition_list.append("(<<df>>['<<date>>']=='2016-10-20')")
+        columns.extend(['month', 'year', 'start_date'])
+        group_by.extend(['month', 'year', 'start_date'])
+
+    pivot_index = ['operator_name']
+    if 'geo_city_name' in columns:
+        group_by.append('geo_city_name')
+        pivot_index.append('geo_city_name')
+    if 'geo_rgn_name' in columns:
+        group_by.append('geo_rgn_name')
+        pivot_index.append('geo_rgn_name')
+    if 'geo_cnty_name' in columns:
+        group_by.append('geo_cnty_name')
+        pivot_index.append('geo_cnty_name')
+
+    tb_name = 'table_sniper' #get_tbname(columns)
+    #modify column_names as per the table
+    #columns = modify_columns(tb_name, columns)
+    final_filter = ''
+    final_filters = []
+    _checks = ['operator_name', 'start_date', 'geo_rgn_name', 'geo_city_name']
+    for cond in list(condition_list):
+        for _cn in _checks:
+            if _cn in cond:
+                final_filters.append(cond)
+                condition_list.remove(cond)
+
+    if final_filters:
+        final_filter = ' & '.join(final_filters)
+
+    conditions = ' & '.join(condition_list)
+    print(final_filters,'::', conditions)
+
+    if conditions:
+        query = "{tb_name}.ix[{conditions}][{columns}]".format(\
+                    tb_name=tb_name, conditions=conditions, columns=columns)
+    else:
+        query = "{tb_name}[{columns}]".format(
+                    tb_name=tb_name, conditions=conditions, columns=columns)
+
+    if not query:
+        return error_mesg(get_resp_negative())
+
+    query = modify_query(tb_name, query)
+    print(query)
+    chart_type = entities.get('viz_type')
+    # execution
+    try:
+        #get rows and columns
+        t1 = eval(query)
+        data = t1.groupby(group_by).sum()
+        gross_share = data.groupby(level=1).apply(lambda x : (x[kpi_abs]/sum(x[kpi_abs]))*100)
+        print("gross:\n", gross_share.head())
+        if isinstance(gross_share, pd.DataFrame):
+            gross_share = gross_share.unstack()
+            gross_share.name = 'gross_share'
+            gross_share.index = gross_share.index.droplevel(level=4)
+        else:
+            gross_share.index = gross_share.index.droplevel(level=0)
+        data['gross_share'] = gross_share
+        data = data.sort_index(level=3)
+        data['gross_share_variance'] = data.groupby(level=0)['gross_share'].diff()
+        print('gross_share_variance', data.head())
+
+        data = data.reset_index().sort_values(by='start_date')
+        if final_filter:
+            _filters = modify_query('data', final_filter)
+            print(_filters)
+            data = data.ix[eval(_filters)]
+        if chart_type:
+            data['Month'] = data['month'].astype(str) +' '+ data['year'].astype(str)
+            data = data.groupby(['operator_name', 'Month', 'start_date']).mean().sort_index(level=2)
+            data.index = data.index.droplevel(level=2)
+            del data['year']
+            del data[kpi_abs]
+            if chart_type in ['bar', 'pie']:
+                data.index = data.index.droplevel(level=1)
+        else:
+            data = data.pivot_table(values=['gross_share_variance'], columns=['start_date', 'month'], index=pivot_index, aggfunc=np.sum)
+            data.columns = data.columns.droplevel([0, 1])
+            data = data.reset_index()
+
+        data = data.round(1)
+        data.fillna('-', inplace=True)
+        data.columns = beautify_columns(list(data.columns))
+        print('res:', data.head())
+    except Exception as e:
+        print('Error:', e)
+        return error_mesg(get_resp_negative())
+
+    if data.empty:
+        return error_mesg(get_resp_no_records())
+    res = []
+    if source == 'web':
+         # generate graph or table or text
+        if chart_type:
+            res.append(generate_result(data, 'graph', section=1))
+        else:
+            res.append(generate_result(data, 'text', section=1))
+    else:
+        res.append({"type":"message", "data": get_resp_positive()})
+        if chart_type:
+            json_data = df_to_chart_data(data, type=chart_type)
+            res.append({"type": "chart", "data":json_data})
+        else:
+            json_data = df_to_table_data(data)
+            res.append({"type":"table", "data":json_data})
     return res
 
 def get_base_rank(entities, source):
@@ -490,7 +752,7 @@ def get_base_rank(entities, source):
     if 'geo_cnty_name' in columns:
         group_by.append('geo_cnty_name')
 
-    tb_name = 'table_base' #get_tbname(columns)
+    tb_name = 'table_sniper' #get_tbname(columns)
     #modify column_names as per the table
     #columns = modify_columns(tb_name, columns)
     conditions = ' & '.join(condition_list)
@@ -565,7 +827,7 @@ def get_gross_rank(entities, source):
     if 'geo_cnty_name' in columns:
         group_by.append('geo_cnty_name')
 
-    tb_name = 'table_gross' #get_tbname(columns)
+    tb_name = 'table_sniper' #get_tbname(columns)
     #modify column_names as per the table
     #columns = modify_columns(tb_name, columns)
     conditions = ' & '.join(condition_list)
@@ -619,7 +881,7 @@ def get_gross_rank(entities, source):
     return res
 
 
-def get_base_share_variance(entities, source):
+def get_base_share_var(entities, source):
     columns = ['operator_name', 'abs_base']
     group_by = ['operator_name']
     condition_list, columns = get_conditions(entities, columns)
@@ -640,7 +902,7 @@ def get_base_share_variance(entities, source):
     if 'geo_cnty_name' in columns:
         group_by.append('geo_cnty_name')
 
-    tb_name = 'table_base' #get_tbname(columns)
+    tb_name = 'table_sniper' #get_tbname(columns)
     #modify column_names as per the table
     #columns = modify_columns(tb_name, columns)
     final_filter = ''
@@ -713,193 +975,6 @@ def get_base_share_variance(entities, source):
         json_data = df_to_table_data(data)
         res.append({"type":"message", "data": get_resp_positive()})
         res.append({"type":"table", "data":json_data})
-    return res
-
-
-def get_gross_share(entities, source):
-    columns = ['operator_name', 'abs_gross']
-    group_by = ['operator_name']
-    condition_list, columns = get_conditions(entities, columns)
-    #agg_func_list, columns = get_agg_functions(entities, columns)
-    if 'month' in columns:
-        columns.extend(['year', 'start_date'])
-        group_by.extend(['month', 'year', 'start_date'])
-
-    if 'month' not in columns:
-        condition_list.append("(<<df>>.<<start_date>>.isin(pd.date_range(start=timezone.now().date()-timezone.timedelta(days=365), periods=365, freq='D')))")
-        #condition_list.append("(<<df>>['<<date>>']=='2016-10-20')")
-        columns.extend(['month', 'year', 'start_date'])
-        group_by.extend(['month', 'year', 'start_date'])
-
-    if 'geo_city_name' in columns:
-        group_by.append('geo_city_name')
-    if 'geo_rgn_name' in columns:
-        group_by.append('geo_rgn_name')
-    if 'geo_cnty_name' in columns:
-        group_by.append('geo_cnty_name')
-
-    tb_name = 'table_gross' #get_tbname(columns)
-    #modify column_names as per the table
-    #columns = modify_columns(tb_name, columns)
-    final_filter = ''
-    final_filters = []
-    for cond in list(condition_list):
-        if 'operator_name' in cond or 'start_date' in cond:
-            final_filters.append(cond)
-            condition_list.remove(cond)
-
-    if final_filters:
-        final_filter = ' & '.join(final_filters)
-
-    conditions = ' & '.join(condition_list)
-    if conditions:
-        query = "{tb_name}.ix[{conditions}][{columns}]".format(\
-                    tb_name=tb_name, conditions=conditions, columns=columns)
-    else:
-        query = "{tb_name}[{columns}]".format(
-                    tb_name=tb_name, conditions=conditions, columns=columns)
-
-    if not query:
-        return error_mesg(get_resp_negative())
-
-    query = modify_query(tb_name, query)
-    print(query)
-
-    # execution
-    try:
-        #get rows and columns
-        t1 = eval(query)
-        print(group_by)
-        data = t1.groupby(group_by).sum()
-        print(data)
-        base_share = data.groupby(level=1).apply(lambda x : (x['abs_gross']/sum(x['abs_gross']))*100)
-        if isinstance(base_share, pd.DataFrame):
-            base_share = base_share.unstack()
-            base_share.name = 'base_share'
-            base_share.index = base_share.index.droplevel(level=4)
-        else:
-            base_share.index = base_share.index.droplevel(level=0)
-
-        print(base_share)
-        data['gross_share'] = base_share
-        print(data)
-        data = data.reset_index().sort_values(by=['start_date'])
-
-        if final_filter:
-            _filters = modify_query('data', final_filter)
-            data = data.ix[eval(_filters)]
-        del data['start_date']
-        data = data.round(2)
-        data.fillna('-', inplace=True)
-        data.columns = beautify_columns(list(data.columns))
-    except Exception as e:
-        print(e)
-        return error_mesg(get_resp_negative())
-
-    if data.empty:
-        return error_mesg(get_resp_no_records())
-    res = []
-
-    if source == 'web':
-         # generate graph or table or text
-        res.append(generate_result(data, 'text', section=1))
-    else:
-        json_data = df_to_table_data(data)
-        res.append({"type":"message", "data": get_resp_positive()})
-        res.append({"type":"table", "data":json_data})
-    return res
-
-def plot_gross_share(entities, source):
-    columns = ['operator_name', 'abs_gross']
-    group_by = ['operator_name']
-    condition_list, columns = get_conditions(entities, columns)
-    #agg_func_list, columns = get_agg_functions(entities, columns)
-    if 'month' in columns:
-        columns.extend(['year', 'start_date'])
-        group_by.extend(['month', 'year', 'start_date'])
-
-    if 'month' not in columns:
-        condition_list.append("(<<df>>.<<start_date>>.isin(pd.date_range(start=timezone.now().date()-timezone.timedelta(days=365), periods=365, freq='D')))")
-        #condition_list.append("(<<df>>['<<date>>']=='2016-10-20')")
-        columns.extend(['month', 'year', 'start_date'])
-        group_by.extend(['month', 'year', 'start_date'])
-
-    if 'geo_city_name' in columns:
-        group_by.append('geo_city_name')
-    if 'geo_rgn_name' in columns:
-        group_by.append('geo_rgn_name')
-    if 'geo_cnty_name' in columns:
-        group_by.append('geo_cnty_name')
-
-    tb_name = 'table_gross' #get_tbname(columns)
-    #modify column_names as per the table
-    #columns = modify_columns(tb_name, columns)
-    final_filter = ''
-    final_filters = []
-    for cond in list(condition_list):
-        if 'operator_name' in cond or 'start_date' in cond:
-            final_filters.append(cond)
-            condition_list.remove(cond)
-
-    if final_filters:
-        final_filter = ' & '.join(final_filters)
-
-    conditions = ' & '.join(condition_list)
-    if conditions:
-        query = "{tb_name}.ix[{conditions}][{columns}]".format(\
-                    tb_name=tb_name, conditions=conditions, columns=columns)
-    else:
-        query = "{tb_name}[{columns}]".format(
-                    tb_name=tb_name, conditions=conditions, columns=columns)
-
-    if not query:
-        return error_mesg(get_resp_negative())
-
-    query = modify_query(tb_name, query)
-    print(query)
-
-    # execution
-    try:
-        #get rows and columns
-        t1 = eval(query)
-        data = t1.groupby(group_by).sum()
-        base_share = data.groupby(level=1).apply(lambda x : (x['abs_gross']/sum(x['abs_gross']))*100)
-
-        if isinstance(base_share, pd.DataFrame):
-            base_share = base_share.unstack()
-            base_share.name = 'base_share'
-            base_share.index = base_share.index.droplevel(level=4)
-        else:
-            base_share.index = base_share.index.droplevel(level=0)
-
-        data['gross_share'] = base_share
-        data = data.reset_index().sort_values(by=['start_date'])
-
-        if final_filter:
-            _filters = modify_query('data', final_filter)
-            data = data.ix[eval(_filters)]
-        data['Month'] = data['month'] +' '+ data['year']
-        data = data.groupby(['operator_name', 'Month', 'start_date']).mean().sort_index(level=2)
-        data.index = data.index.droplevel(level=2)
-        del data['abs_gross']
-        data = data.round(2)
-        data.fillna('-', inplace=True)
-        data.columns = beautify_columns(list(data.columns))
-    except Exception as e:
-        print(e)
-        return error_mesg(get_resp_negative())
-
-    if data.empty:
-        return error_mesg(get_resp_no_records())
-    res = []
-
-    if source == 'web':
-         # generate graph or table or text
-        res.append(generate_result(data, 'graph', section=1))
-    else:
-        json_data = df_to_chart_data(data)
-        res.append({"type":"message", "data": "Heres your Gross Share Report."})
-        res.append({"type":"chart", "data":json_data})
     return res
 
 def _get_value_from_context(context, keyword, current_index=0):
