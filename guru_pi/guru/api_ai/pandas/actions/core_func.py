@@ -50,26 +50,40 @@ def df_to_table_data(_df):
 #converts DataFrame to chart specific data.
 def df_to_chart_data(_df, type='line'):
     json_data = []
+    print('inside:', _df)
+    if isinstance(_df, pd.Series):
+        print('yes')
+    else:
+        print('no')
     for _data in levels(_df, type):
         json_data.append(_data)
+    print(json_data)
     return json_data
 
 def levels(_df, _type):
-    print(_df)
+    print('inside levels:', _df)
     if isinstance(_df, pd.Series):
         print('yes')
     else:
         print('no')
     print(_df.index.nlevels)
-    for key in _df.index.get_level_values(level=0).unique():
-        if _df.xs(key).index.nlevels > 1:
-            levels(_df.xs(key, _type))
-        else:
-            for col in _df.xs(key).columns:
-                _list = []
-                for x, y in zip(_df.xs(key).index, _df.xs(key)[col]):
-                    _list.append([x, y])
-                yield {'type': _type, 'name': key, 'data': _list}
+    print(_df.index, _df.columns, _df.values.tolist())
+    if _df.index.nlevels == 1:
+        _list = []
+        for x, y in zip(_df.index, _df.values.tolist()):
+            _list.append([x, y[0]])
+        yield {'type': _type, 'name': _df.columns[0], 'data': _list}
+
+    else:
+        for key in _df.index.get_level_values(level=0).unique():
+            if _df.xs(key).index.nlevels > 1:
+                levels(_df.xs(key, _type))
+            else:
+                for col in _df.xs(key).columns:
+                    _list = []
+                    for x, y in zip(_df.xs(key).index, _df.xs(key)[col]):
+                        _list.append([x, y])
+                    yield {'type': _type, 'name': key, 'data': _list}
 
 
 # function accepts pandas DataFrame and return HTML.
@@ -169,6 +183,7 @@ table_column_map = {
 
 def beautify_columns(cols):
     print(cols)
+
     _map = {
         'operator_name': 'Operator',
         'month': 'Month',
@@ -185,9 +200,20 @@ def beautify_columns(cols):
         'NOV': "Nov 16",
         'DEC': "Dec 16",
         }
+    _months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+    for i in range(len(_months)-1):
+        for j in range(i+1, len(_months)):
+            _map[_months[i]+'_vs_'+_months[j]] = _months[i].capitalize()+' 16' + ' Vs '+ _months[j].capitalize()+' 16'
+
     _kpi_filters = ['', '1-10', '1-20', 'migrant', 'non_migrant', 'bangladesh', 'indonesia', 'nepal', 'abs']
     _kpis = ['base_share', 'base_share_variance', 'base_share_variance_with_leader', 'base_rank', 'gross_rank',
-            'gross_share', 'gross_share_variance', 'gross_share_variance_with_leader', 'base_share_minus_gross_share']
+            'gross_share', 'gross_share_variance', 'gross_share_variance_with_leader', 'base_share_minus_gross_share',
+            'base_share_increase', 'base_share_decrease', 'base_variance_increase', 'base_variance_decrease',
+            'gross_share_increase', 'gross_share_decrease', 'gross_variance_increase', 'gross_variance_decrease',
+            'base_rank_increase', 'base_rank_decrease', 'gross_rank_increase', 'gross_rank_decrease',
+            'base_share_variance_with_leader_increase', 'base_share_variance_with_leader_decrease',
+            'gross_share_variance_with_leader_increase', 'gross_share_variance_with_leader_decrease',
+            ]
     for k in _kpis:
         if 'rank' in k:
             _map[k] = ' '.join([x.strip().capitalize() for x in k.split('_')])
@@ -309,7 +335,7 @@ def get_conditions(entities, columns=[]):
     condition_list = []
     print('InPut inside compose condition:', columns)
     #normalising expressions
-    exp_l = entities.get('expression', {})
+    exp_l = entities.get('rel_exp', [])
     for i in range(len(exp_l)):
         exp = exp_l[i]
         if not exp.get('prop', None):
@@ -327,7 +353,7 @@ def get_conditions(entities, columns=[]):
                 raise ParsingError('Not a valid expression...operator missing.')
         else:
             exp_l[i]['operator'] = operators[exp['operator']]
-        if not exp.get('value', None):
+        if not str(exp.get('value', None)):
             val = _get_value_from_context(exp_l, 'value', current_index=i)
             if val:
                 exp_l[i]['value'] = ''.join(val.split( ))
@@ -335,18 +361,19 @@ def get_conditions(entities, columns=[]):
                 raise ParsingError('Not a valid expression...prop_value missing.')
         if i < len(exp_l)-1:
             if not exp.get('conn', None):
-                exp_l[i]['conn'] = '&'
+                exp_l[i]['conn'] = 'and'
         else:
             if exp.get('conn', None):
                 del exp_l[i]['conn']
 
-        _exp = ''
-        for i, exp in enumerate(exp_l):
-            _exp += "(<<df>>['<<{prop}>>'] {operator} {value})".format(prop=exp['prop'],
-                        operator=exp['operator'], value= ''.join(exp['value'].split( )))
-            columns.append(exp['prop'])
-            if exp.get('conn', None):
-                _exp += ' ' + connectors[exp['conn']]
+    _exp = ''
+    for i, exp in enumerate(exp_l):
+        _exp += "(<<df>>['<<{prop}>>'] {operator} {value})".format(prop=exp['prop'],
+                    operator=exp['operator'], value= ''.join(str(exp['value']).split( )))
+        columns.append(exp['prop'])
+        if exp.get('conn', None):
+            _exp += ' ' + connectors[exp['conn']]
+    if _exp:
         condition_list.append(_exp)
         print(condition_list)
 
@@ -403,5 +430,4 @@ def get_conditions(entities, columns=[]):
     columns = sorted(set(columns), key=columns.index) #removing duplicates while retaining original sequence
     print('Inside compose_condition: columns = ', columns)
     return (condition_list, columns)
-
 

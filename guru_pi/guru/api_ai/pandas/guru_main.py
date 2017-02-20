@@ -88,7 +88,6 @@ def get_answer(request):
         raw_info['action'] = result.get('action', '')
         raw_info['entities'] = result.get('parameters', {})
         raw_info['score'] = result.get('score', '')
-
         action = result.get('action', None)
         confidence = result.get('score', None)
         print('ACTION:', action)

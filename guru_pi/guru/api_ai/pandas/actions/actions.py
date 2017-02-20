@@ -1,17 +1,38 @@
 from .core_func import *
 
 def get_base_share(entities, source):
+    rel_exp = entities.get('rel_exp')
+    if rel_exp:
+        _rel_exp = []
+        for exp in rel_exp:
+            exp['prop'] = 'base_share'
+            _rel_exp.append(exp)
+        entities['rel_exp'] = _rel_exp
+    print(entities)
+
     columns = ['operator_name']
     group_by = ['operator_name']
     condition_list, columns = get_conditions(entities, columns)
     #agg_func_list, columns = get_agg_functions(entities, columns)
+
     kpi_filter = entities.get('kpi_filter')
     if kpi_filter:
         kpi_abs = kpi_filter+'_base'
     else:
         kpi_abs = 'abs_base'
-
     columns.append(kpi_abs)
+
+    trend_exp = entities.get('trend_exp')
+    if trend_exp:
+        trend_exp['trend'] = trend_exp['trend'].strip()
+        trend_exp['deviation'] = str(trend_exp.get('deviation', 0)).strip('%')
+
+    row_filter = entities.get('row_filter_exp')
+    if not row_filter:
+        row_filter = {'type':'top', 'count': 100000}
+    rf_type = row_filter.get('type')
+    rf_order_asc = False if rf_type == 'top' else True
+    rf_count = row_filter.get('count')
 
     keywords = entities.get('keyword', [])
     columns += [k for k in keywords if k not in columns]
@@ -64,26 +85,71 @@ def get_base_share(entities, source):
             c.name = 'base_share'
             data = pd.DataFrame(c).reset_index(level=[0], drop=True).reset_index()
 
-        print(data.head(20))
+        print(data.head(10))
         if conditions:
             _filters = modify_query('data', conditions)
             print(_filters)
             data = data.ix[eval(_filters)]
-        print(data.head(20))
+        print(data.head(10))
 
-        if chart_type:
-            data['Month'] = data['month'].astype(str) +' '+ data['year'].astype(str)
-            data = data.groupby(['operator_name', 'Month', 'start_date']).mean().sort_index(level=2)
-            data.index = data.index.droplevel(level=2)
-            del data['year']
-            if chart_type in ['bar', 'pie']:
-                data.index = data.index.droplevel(level=1)
+        if trend_exp: # query is "trendy", need futher processing.
+            group_min = data[data['start_date']==data['start_date'].min()].reset_index(drop=True)
+            group_max = data[data['start_date']==data['start_date'].max()].reset_index(drop=True)
+            if 'geo_rgn_name' in columns:
+                new_df = group_min.merge(group_max, on=['operator_name', 'geo_rgn_name'], suffixes=['_min', '_max'])
+                new_df['difference'] = new_df['base_share_max'] - new_df['base_share_min']
+                _data = new_df[['operator_name', 'geo_rgn_name', 'base_share_min', \
+                            'base_share_max', 'difference']]
+                _error_if_empty = 'No such Regions found'
+            elif 'geo_city_name' in columns:
+                new_df = group_min.merge(group_max, on=['operator_name', 'geo_city_name'], suffixes=['_min', '_max'])
+                new_df['difference'] = new_df['base_share_max'] - new_df['base_share_min']
+                _data = new_df[['operator_name', 'geo_city_name', 'base_share_min', \
+                                'base_share_max', 'difference']]
+                _error_if_empty = 'No such Cities found'
+            else:
+                new_df = group_min.merge(group_max, on=['operator_name'], suffixes=['_min', '_max'])
+                new_df['difference'] = new_df['base_share_max'] - new_df['base_share_min']
+                _data = new_df[['operator_name', 'base_share_min', 'base_share_max', 'difference']]
+                _error_if_empty = 'No such Operators found'
+
+            print('min-max month:', _data)
+            # Applying "trend" filter
+            if trend_exp['trend'] == 'increase':
+                _data = _data[new_df['difference'] > float(trend_exp['deviation'])]
+                _title = kpi_abs+'_share_increase'
+            else:
+                _data =  _data[new_df['difference'] < -float(trend_exp['deviation'])]
+                _title = kpi_abs+'_share_decrease'
+            # Preparing required output format
+            data = _data.reset_index(drop=True)
+            if data.empty:
+                return error_mesg(_error_if_empty)
+            data.rename(columns={'operator_name': _title,
+                                'base_share_min': new_df['month_min'][0],
+                                'base_share_max': new_df['month_max'][0],
+                                'difference': new_df['month_min'][0]+'_vs_'+new_df['month_max'][0]},
+                                inplace=True)
         else:
-            data = data.pivot_table(values=['base_share'], columns=['start_date', 'month'], index=pivot_index, aggfunc=np.sum)
-            data.columns = data.columns.droplevel([0, 1])
-            data = data.reset_index()
+            if chart_type:
+                data['Month'] = data['month'].astype(str) +' '+ data['year'].astype(str)
+                data = data.groupby(['operator_name', 'Month', 'start_date']).mean().sort_index(level=2)
+                data.index = data.index.droplevel(level=2)
+                del data['year']
+                print('chart data:\n', data)
+                if chart_type in ['bar', 'pie']:
+                    data.index = data.index.droplevel(level=1)
+                    data = data.reset_index().set_index('operator_name')
+            else:
+                data = data.pivot_table(values=['base_share'], columns=['start_date', 'month'], index=pivot_index, aggfunc=np.sum)
+                data.columns = data.columns.droplevel([0, 1])
+                data = data.reset_index()
+
+        # Ready to Rocka!
+        numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
+        data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
         print('final:', data)
-        data = data.round(1)
+        data = data.round(2)
         data.fillna('-', inplace=True)
         print(kpi_filter+'_base_share')
         if not kpi_filter:
@@ -118,6 +184,15 @@ def get_base_share(entities, source):
     return res
 
 def get_gross_share(entities, source):
+    rel_exp = entities.get('rel_exp')
+    if rel_exp:
+        _rel_exp = []
+        for exp in rel_exp:
+            exp['prop'] = 'gross_share'
+            _rel_exp.append(exp)
+        entities['rel_exp'] = _rel_exp
+
+    print(entities)
     columns = ['operator_name']
     group_by = ['operator_name']
     condition_list, columns = get_conditions(entities, columns)
@@ -129,6 +204,19 @@ def get_gross_share(entities, source):
         kpi_abs = 'abs_gross'
 
     columns.append(kpi_abs)
+
+    trend_exp = entities.get('trend_exp')
+    if trend_exp:
+        trend_exp['trend'] = trend_exp['trend'].strip()
+        trend_exp['deviation'] = str(trend_exp.get('deviation', 0)).strip('%')
+
+    row_filter = entities.get('row_filter_exp')
+
+    if not row_filter:
+        row_filter = {'type':'top', 'count': 100000}
+    rf_type = row_filter.get('type')
+    rf_order_asc = False if rf_type == 'top' else True
+    rf_count = row_filter.get('count')
 
     keywords = entities.get('keyword', [])
     columns += [k for k in keywords if k not in columns]
@@ -202,19 +290,62 @@ def get_gross_share(entities, source):
             data = data.ix[eval(_filters)]
         print(data.head(20))
 
-        if chart_type:
-            data['Month'] = data['month'].astype(str) +' '+ data['year'].astype(str)
-            data = data.groupby(['operator_name', 'Month', 'start_date']).mean().sort_index(level=2)
-            data.index = data.index.droplevel(level=2)
-            del data['year']
-            if chart_type in ['bar', 'pie']:
-                data.index = data.index.droplevel(level=1)
-        else:
-            data = data.pivot_table(values=['gross_share'], columns=['start_date', 'month'], index=pivot_index, aggfunc=np.sum)
-            data.columns = data.columns.droplevel([0, 1])
-            data = data.reset_index()
+        if trend_exp: # query is "trendy", need futher processing.
+            group_min = data[data['start_date']==data['start_date'].min()].reset_index(drop=True)
+            group_max = data[data['start_date']==data['start_date'].max()].reset_index(drop=True)
+            if 'geo_rgn_name' in columns:
+                new_df = group_min.merge(group_max, on=['operator_name', 'geo_rgn_name'], suffixes=['_min', '_max'])
+                new_df['difference'] = new_df['gross_share_max'] - new_df['gross_share_min']
+                _data = new_df[['operator_name', 'geo_rgn_name', 'gross_share_min', \
+                            'gross_share_max', 'difference']]
+                _error_if_empty = 'No such Regions found'
+            elif 'geo_city_name' in columns:
+                new_df = group_min.merge(group_max, on=['operator_name', 'geo_city_name'], suffixes=['_min', '_max'])
+                new_df['difference'] = new_df['gross_share_max'] - new_df['gross_share_min']
+                _data = new_df[['operator_name', 'geo_city_name', 'gross_share_min', \
+                                'gross_share_max', 'difference']]
+                _error_if_empty = 'No such Cities found'
+            else:
+                new_df = group_min.merge(group_max, on=['operator_name'], suffixes=['_min', '_max'])
+                new_df['difference'] = new_df['gross_share_max'] - new_df['gross_share_min']
+                _data = new_df[['operator_name', 'gross_share_min', 'gross_share_max', 'difference']]
+                _error_if_empty = 'No such Operators found'
+
+            print('min-max month:', _data)
+            # Applying "trend" filter
+            if trend_exp['trend'] == 'increase':
+                _data = _data[new_df['difference'] > float(trend_exp['deviation'])]
+                _title = kpi_abs+'_share_increase'
+            else:
+                _data =  _data[new_df['difference'] < -float(trend_exp['deviation'])]
+                _title = kpi_abs+'_share_decrease'
+            # Preparing required output format
+            data = _data.reset_index(drop=True)
+            if data.empty:
+                return error_mesg(_error_if_empty)
+            data.rename(columns={'operator_name': _title,
+                                'gross_share_min': new_df['month_min'][0],
+                                'gross_share_max': new_df['month_max'][0],
+                                'difference': new_df['month_min'][0]+'_vs_'+new_df['month_max'][0]},
+                                inplace=True)
+        else: # Not "trendy"
+            if chart_type:
+                data['Month'] = data['month'].astype(str) +' '+ data['year'].astype(str)
+                data = data.groupby(['operator_name', 'Month', 'start_date']).mean().sort_index(level=2)
+                data.index = data.index.droplevel(level=2)
+                del data['year']
+                if chart_type in ['bar', 'pie']:
+                    data.index = data.index.droplevel(level=1)
+            else:
+                data = data.pivot_table(values=['gross_share'], columns=['start_date', 'month'], index=pivot_index, aggfunc=np.sum)
+                data.columns = data.columns.droplevel([0, 1])
+                data = data.reset_index()
+
+        numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
+        data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
+
         print('final:', data)
-        data = data.round(1)
+        data = data.round(2)
         data.fillna('-', inplace=True)
         print(kpi_filter+'_gross_share')
         if not kpi_filter:
@@ -249,6 +380,14 @@ def get_gross_share(entities, source):
     return res
 
 def get_base_share_variance(entities, source):
+    rel_exp = entities.get('rel_exp')
+    if rel_exp:
+        _rel_exp = []
+        for exp in rel_exp:
+            exp['prop'] = 'base_share_variance'
+            _rel_exp.append(exp)
+        entities['rel_exp'] = _rel_exp
+    print(entities)
     columns = ['operator_name']
     group_by = ['operator_name']
     condition_list, columns = get_conditions(entities, columns)
@@ -260,6 +399,13 @@ def get_base_share_variance(entities, source):
         kpi_abs = 'abs_base'
 
     columns.append(kpi_abs)
+
+    row_filter = entities.get('row_filter_exp')
+    if not row_filter:
+        row_filter = {'type':'top', 'count': 100000}
+    rf_type = row_filter.get('type')
+    rf_order_asc = False if rf_type == 'top' else True
+    rf_count = row_filter.get('count')
 
     keywords = entities.get('keyword', [])
     columns += [k for k in keywords if k not in columns]
@@ -345,6 +491,10 @@ def get_base_share_variance(entities, source):
             data = data.pivot_table(values=['base_share_variance'], columns=['start_date', 'month'], index=pivot_index, aggfunc=np.sum)
             data.columns = data.columns.droplevel([0, 1])
             data = data.reset_index()
+
+        numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
+        data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
+
         print('final:', data)
         data = data.round(2)
         data.fillna('-', inplace=True)
@@ -381,6 +531,14 @@ def get_base_share_variance(entities, source):
     return res
 
 def get_gross_share_variance(entities, source):
+    rel_exp = entities.get('rel_exp')
+    if rel_exp:
+        _rel_exp = []
+        for exp in rel_exp:
+            exp['prop'] = 'gross_share_variance'
+            _rel_exp.append(exp)
+        entities['rel_exp'] = _rel_exp
+    print(entities)
     columns = ['operator_name']
     group_by = ['operator_name']
     condition_list, columns = get_conditions(entities, columns)
@@ -392,6 +550,13 @@ def get_gross_share_variance(entities, source):
         kpi_abs = 'abs_gross'
 
     columns.append(kpi_abs)
+
+    row_filter = entities.get('row_filter_exp')
+    if not row_filter:
+        row_filter = {'type':'top', 'count': 100000}
+    rf_type = row_filter.get('type')
+    rf_order_asc = False if rf_type == 'top' else True
+    rf_count = row_filter.get('count')
 
     keywords = entities.get('keyword', [])
     columns += [k for k in keywords if k not in columns]
@@ -480,6 +645,10 @@ def get_gross_share_variance(entities, source):
             data = data.pivot_table(values=['gross_share_variance'], columns=['start_date', 'month'], index=pivot_index, aggfunc=np.sum)
             data.columns = data.columns.droplevel([0, 1])
             data = data.reset_index()
+
+        numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
+        data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
+
         print('final:', data)
         data = data.round(2)
         data.fillna('-', inplace=True)
