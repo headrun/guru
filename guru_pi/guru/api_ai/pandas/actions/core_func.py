@@ -191,8 +191,6 @@ def beautify_columns(cols):
         'geo_city_name': 'State Name',
         'geo_rgn_name': 'Region Name',
         'geo_cnty_name': 'County Name',
-        'abs_base': 'Absolute Base',
-        'abs_gross': 'Absolute Gross',
         'JUL': "Jul 16",
         'AUG': "Aug 16",
         'SEP': "Sep 16",
@@ -206,8 +204,10 @@ def beautify_columns(cols):
             _map[_months[i]+'_vs_'+_months[j]] = _months[i].capitalize()+' 16' + ' Vs '+ _months[j].capitalize()+' 16'
 
     _kpi_filters = ['', '1-10', '1-20', 'migrant', 'non_migrant', 'bangladesh', 'indonesia', 'nepal', 'abs']
-    _kpis = ['base_share', 'base_share_variance', 'base_share_variance_with_leader', 'base_rank', 'gross_rank',
-            'gross_share', 'gross_share_variance', 'gross_share_variance_with_leader', 'base_share_minus_gross_share',
+    _kpis = ['abs_base', 'abs_gross', 'base_share', 'base_share_variance', 'base_share_variance_with_leader',
+            'base_rank', 'gross_rank','gross_share', 'gross_share_variance',
+            'gross_share_variance_with_leader', 'base_share_minus_gross_share',
+            'abs_base_increase', 'abs_gross_increase', 'abs_base_decrease', 'abs_gross_decrease',
             'base_share_increase', 'base_share_decrease', 'base_variance_increase', 'base_variance_decrease',
             'gross_share_increase', 'gross_share_decrease', 'gross_variance_increase', 'gross_variance_decrease',
             'base_rank_increase', 'base_rank_decrease', 'gross_rank_increase', 'gross_rank_decrease',
@@ -225,7 +225,13 @@ def beautify_columns(cols):
             if 'rank' in k and kf.startswith('abs'):
                 _map[(kf+'_'+k).strip()] = ' '.join([x.strip().capitalize() for x in k.split('_')])
                 continue
-
+            if ('abs_base' in k) or ('abs_gross' in k):
+                _k = k.replace('abs','absolute')
+                if not kf:
+                    _map[(k).strip()] = ' '.join([x.strip().capitalize() for x in (kf+'_'+_k).split('_')]) + " (in 000s)"
+                else:
+                    _map[(kf+'_'+k).strip()] = ' '.join([x.strip().capitalize() for x in (kf+'_'+_k).split('_')]) + " (in 000s)"
+                continue
             if kf.startswith('abs'):
                 _map[(kf+'_'+k).strip()] = ' '.join([x.strip().capitalize() for x in k.split('_')]) + '(%)'
                 continue

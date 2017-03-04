@@ -24,8 +24,8 @@ def get_bs_minus_gs(entities, source):
     if not row_filter:
         row_filter = {'type':'top', 'count': 100000}
     rf_type = row_filter.get('type')
-    rf_order_asc = False if rf_type == 'top' else True
-    rf_count = row_filter.get('count')
+    rf_order_asc = False if rf_type in ['top', 'position'] else True
+    rf_count = row_filter.get('count', 1)
 
     keywords = entities.get('keyword', [])
     columns += [k for k in keywords if k not in columns]
@@ -118,6 +118,10 @@ def get_bs_minus_gs(entities, source):
 
         numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
         data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
+        if rf_type == 'position': #get specific index
+            data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
+            data = data.to_frame().T
+            data = data.apply(pd.to_numeric, errors='ignore') #convert all possible numeric columns to numeric
 
         print('final:', data)
         data.rename(columns={'operator_name': kpi_filter+'_base_share_minus_gross_share'}, inplace=True)
@@ -173,8 +177,8 @@ def get_base_rank(entities, source):
     if not row_filter:
         row_filter = {'type':'top', 'count': 100000}
     rf_type = row_filter.get('type')
-    rf_order_asc = True if rf_type == 'top' else False
-    rf_count = row_filter.get('count')
+    rf_order_asc = True if rf_type in ['top', 'position'] else False
+    rf_count = row_filter.get('count', 1)
 
     trend_exp = entities.get('trend_exp')
     if trend_exp:
@@ -298,6 +302,10 @@ def get_base_rank(entities, source):
 
         numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
         data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
+        if rf_type == 'position': #get specific index
+            data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
+            data = data.to_frame().T
+            data = data.apply(pd.to_numeric, errors='ignore') #convert all possible numeric columns to numeric
 
         data.rename(columns={'operator_name': kpi_filter+'_rank'}, inplace=True)
         data = data.round(1)
@@ -357,8 +365,8 @@ def get_gross_rank(entities, source):
     if not row_filter:
         row_filter = {'type':'top', 'count': 100000}
     rf_type = row_filter.get('type')
-    rf_order_asc = True if rf_type == 'top' else False
-    rf_count = row_filter.get('count')
+    rf_order_asc = True if rf_type in ['top', 'position'] else False
+    rf_count = row_filter.get('count', 1)
 
     keywords = entities.get('keyword', [])
     columns += [k for k in keywords if k not in columns]
@@ -478,6 +486,10 @@ def get_gross_rank(entities, source):
 
         numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
         data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
+        if rf_type == 'position': #get specific index
+            data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
+            data = data.to_frame().T
+            data = data.apply(pd.to_numeric, errors='ignore') #convert all possible numeric columns to numeric
 
         data.rename(columns={'operator_name': kpi_filter+'_rank'}, inplace=True)
         data = data.round(1)
@@ -538,8 +550,8 @@ def get_bv_with_leader(entities, source):
     if not row_filter:
         row_filter = {'type':'top', 'count': 100000}
     rf_type = row_filter.get('type')
-    rf_order_asc = False if rf_type == 'top' else True
-    rf_count = row_filter.get('count')
+    rf_order_asc = False if rf_type in ['top', 'position'] else True
+    rf_count = row_filter.get('count', 1)
 
     keywords = entities.get('keyword', [])
     columns += [k for k in keywords if k not in columns]
@@ -659,6 +671,10 @@ def get_bv_with_leader(entities, source):
 
         numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
         data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
+        if rf_type == 'position': #get specific index
+            data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
+            data = data.to_frame().T
+            data = data.apply(pd.to_numeric, errors='ignore') #convert all possible numeric columns to numeric
 
         data.rename(columns={'operator_name': kpi_filter+'_share_variance_with_leader'}, inplace=True)
         data = data.round(1)
@@ -720,8 +736,8 @@ def get_gv_with_leader(entities, source):
     if not row_filter:
         row_filter = {'type':'top', 'count': 100000}
     rf_type = row_filter.get('type')
-    rf_order_asc = False if rf_type == 'top' else True
-    rf_count = row_filter.get('count')
+    rf_order_asc = False if rf_type in ['top', 'position'] else True
+    rf_count = row_filter.get('count', 1)
 
     keywords = entities.get('keyword', [])
     columns += [k for k in keywords if k not in columns]
@@ -840,6 +856,10 @@ def get_gv_with_leader(entities, source):
 
         numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
         data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
+        if rf_type == 'position': #get specific index
+            data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
+            data = data.to_frame().T
+            data = data.apply(pd.to_numeric, errors='ignore') #convert all possible numeric columns to numeric
 
         data.rename(columns={'operator_name': kpi_filter+'_share_variance_with_leader'}, inplace=True)
         data = data.round(1)
