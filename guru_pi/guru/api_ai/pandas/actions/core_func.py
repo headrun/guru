@@ -213,6 +213,7 @@ def beautify_columns(cols):
             'base_rank_increase', 'base_rank_decrease', 'gross_rank_increase', 'gross_rank_decrease',
             'base_share_variance_with_leader_increase', 'base_share_variance_with_leader_decrease',
             'gross_share_variance_with_leader_increase', 'gross_share_variance_with_leader_decrease',
+            'base_share_minus_gross_share_rank',
             ]
     for k in _kpis:
         if 'rank' in k:
@@ -293,7 +294,12 @@ operators = {
     'lt': '<',
     'gte': '>=',
     'lte': '<=',
-    'eq': '='}
+    'eq': '=='}
+
+swap_operators = {
+    'gt': '<',
+    'lt': '>',
+    'eq': '=='}
 
 connectors = {
     'and': '&',
@@ -344,6 +350,10 @@ def get_conditions(entities, columns=[]):
     exp_l = entities.get('rel_exp', [])
     for i in range(len(exp_l)):
         exp = exp_l[i]
+        print(exp)
+        if exp.get('operand_1') or exp.get('operand_2'):
+            continue
+        print('exp')
         if not exp.get('prop', None):
             val  = _get_value_from_context(exp_l, 'prop', current_index=i)
             if val:
@@ -374,11 +384,21 @@ def get_conditions(entities, columns=[]):
 
     _exp = ''
     for i, exp in enumerate(exp_l):
+        if exp.get('operand_1') or exp.get('operand_2'):
+            continue
         _exp += "(<<df>>['<<{prop}>>'] {operator} {value})".format(prop=exp['prop'],
                     operator=exp['operator'], value= ''.join(str(exp['value']).split( )))
         columns.append(exp['prop'])
         if exp.get('conn', None):
             _exp += ' ' + connectors[exp['conn']]
+    if _exp:
+        condition_list.append(_exp)
+        print(condition_list)
+
+    exp_l = entities.get('rel_exp_2', [])
+    for i, exp in enumerate(exp_l):
+        _exp += "(<<df>>['<<{operand_1}>>'] {operator} <<df>>['<<{operand_2}>>'])".format(operand_1=exp['operand'][0],
+                    operator=swap_operators[exp['operator']], operand_2=exp['operand'][1])
     if _exp:
         condition_list.append(_exp)
         print(condition_list)
@@ -411,6 +431,10 @@ def get_conditions(entities, columns=[]):
                 date_period= start_date.get('date-period', None)
                 if date_period:
                     dates = tuple(date_period.split('/'))
+                    date_format = "%Y-%m-%d"
+                    diff = datetime.datetime.strptime(dates[0], date_format) - datetime.datetime.strptime(dates[1], date_format)
+                    if diff.total_seconds() > 0:
+                        dates = dates[::-1]
                     condition_list.append("(<<df>>['<<start_date>>'].isin(pd.date_range(start='%s', end='%s', freq='D')))"%dates)
                     columns.append('month')
                 elif start_date.get('date', None):

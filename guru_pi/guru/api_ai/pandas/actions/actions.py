@@ -471,7 +471,7 @@ def get_industry_base(entities, source):
             data = data.pivot_table(values=['ind_base'], columns=['start_date', 'month'], index=['Industry Base (in 000s)'], aggfunc=np.sum)
             data.columns = data.columns.droplevel([0, 1])
             data = data.reset_index()
-
+            print("datass:", data)
         # Ready to Rocka!
         numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
         #sort by numeric columns
@@ -579,7 +579,7 @@ def get_industry_gross(entities, source):
         #get rows and columns
         #t1 = eval(query)
         b = table_sniper.groupby(['operator_name', 'month', 'year', 'start_date'])['abs_gross'].sum()
-        c = pd.DataFrame(b).groupby(level=[1, 2, 3]).apply(lambda x : x.sum()) 
+        c = pd.DataFrame(b).groupby(level=[1, 2, 3]).apply(lambda x : x.sum())
         data = (c/1000).round(1)
         data['Industry Gross (in 000s)'] = 'Industry'
         data = pd.DataFrame(data).reset_index()
