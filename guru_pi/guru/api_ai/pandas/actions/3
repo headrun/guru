@@ -79,16 +79,29 @@ def df_to_table_data(_df):
 #converts DataFrame to chart specific data.
 def df_to_chart_data(_df, type='line'):
     json_data = []
+    print('inside:', _df)
+    if isinstance(_df, pd.Series):
+        print('yes')
+    else:
+        print('no')
     for _data in levels(_df, type):
         json_data.append(_data)
     print(json_data)
     return json_data
 
 def levels(_df, _type):
+    print('inside levels:', _df)
+    if isinstance(_df, pd.Series):
+        print('yes')
+    else:
+        print('no')
+    print(_df.index.nlevels)
+    print(_df.index, _df.columns, _df.values.tolist())
     if _df.index.nlevels == 1:
         _list = []
         for x, y in zip(_df.index, _df.values.tolist()):
             _list.append([x, y[0]])
+        converted_value = getattr(_list, "tolist", lambda x=_list: x)()
         yield {'type': _type, 'name': _df.columns[0], 'data': _list}
 
     else:
@@ -98,9 +111,9 @@ def levels(_df, _type):
             else:
                 for col in _df.xs(key).columns:
                     _list = []
-                    for x, y in zip(_df.xs(key).index, _df.xs(key)[col].tolist()):
+                    for x, y in zip(_df.xs(key).index, _df.xs(key)[col]):
                         _list.append([x, y])
-
+                    converted_value = getattr(_list, "tolist", lambda x=_list: x)()
                     yield {'type': _type, 'name': key, 'data': _list}
 
 

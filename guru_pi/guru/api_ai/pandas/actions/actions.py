@@ -120,7 +120,7 @@ def get_abs_base(entities, source):
                 _title = kpi_filter+'_abs_base_increase' if kpi_filter else 'abs_base_increase'
             else:
                 _data =  _data[new_df['difference'] < -float(trend_exp['deviation'])]
-                _title = kpi_filter+'_abs_base_decrease' if kpi_filter else  'abs_base_decrease'
+                _title = kpi_filter+'_abs_base_decrease' if kpi_filter else 'abs_base_decrease'
             # Preparing required output format
             data = _data.reset_index(drop=True)
             if data.empty:
@@ -134,6 +134,7 @@ def get_abs_base(entities, source):
             if chart_type:
                 data['Month'] = data['month'].astype(str) +' '+ data['year'].astype(str)
                 data = data.groupby(['operator_name', 'Month', 'start_date']).mean().sort_index(level=2)
+                print('sorted', data)
                 data.index = data.index.droplevel(level=2)
                 del data['year']
                 print('chart data:\n', data)
@@ -144,26 +145,24 @@ def get_abs_base(entities, source):
                 data = data.pivot_table(values=['abs_base'], columns=['start_date', 'month'], index=pivot_index, aggfunc=np.sum)
                 data.columns = data.columns.droplevel([0, 1])
                 data = data.reset_index()
+                # Ready to Rocka!
+                numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
+                #sort by numeric columns
+                data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
+                if rf_type == 'position': #get specific index
+                    data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
+                    data = data.to_frame().T
+                    data = data.apply(pd.to_numeric, errors='ignore') #convert all possible numeric columns to numeric
 
-        # Ready to Rocka!
-        numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
-        #sort by numeric columns
-        data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
-        if rf_type == 'position': #get specific index
-            data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
-            data = data.to_frame().T
-            data = data.apply(pd.to_numeric, errors='ignore') #convert all possible numeric columns to numeric
-
-        print('final:', data, data.dtypes)
-        data = data.round(1)
-        data.fillna('-', inplace=True)
-        if not kpi_filter:
-            _col_name = 'abs_base'
-        else:
-            _col_name = kpi_filter+'_abs_base'
-        print(_col_name)
-        data.rename(columns={'operator_name': _col_name}, inplace=True)
-        data.columns = beautify_columns(list(data.columns))
+                print('final:', data)
+                data = data.round(1)
+                data.fillna('-', inplace=True)
+                if not kpi_filter:
+                    _col_name = 'abs_base'
+                else:
+                    _col_name = kpi_filter+'_abs_base'
+                data.rename(columns={'operator_name': _col_name}, inplace=True)
+                data.columns = beautify_columns(list(data.columns))
         print('res:', data.head())
     except Exception as e:
         print('Error:', e)
@@ -172,6 +171,7 @@ def get_abs_base(entities, source):
     if data.empty:
         return error_mesg(get_resp_no_records())
     res = []
+
     if source == 'web':
          # generate graph or table or text
         if chart_type:
@@ -182,7 +182,9 @@ def get_abs_base(entities, source):
         res.append({"type":"message", "data": get_resp_positive()})
         if chart_type:
             json_data = df_to_chart_data(data, type=chart_type)
-            res.append({"type": "chart", "data":json_data, "extras": {'yaxis_title': kpi_filter.capitalize()+' Base Share(%)'}})
+            chart_options = get_chart_options(type=chart_type)
+            chart_options['yAxis']['title'] = {'text': kpi_filter.capitalize()+' Absolute Base (in 000s)'}
+            res.append({"type": "chart", "data":json_data, "extras": chart_options})
         else:
             json_data = df_to_table_data(data)
             res.append({"type":"table", "data":json_data})
@@ -333,25 +335,25 @@ def get_abs_gross(entities, source):
                 data.columns = data.columns.droplevel([0, 1])
                 data = data.reset_index()
 
-        # Ready to Rocka!
-        numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
-        #sort by numeric columns
-        data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
-        if rf_type == 'position': #get specific index
-            data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
-            data = data.to_frame().T
-            data = data.apply(pd.to_numeric, errors='ignore') #convert all possible numeric columns to numeric
+                # Ready to Rocka!
+                numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
+                #sort by numeric columns
+                data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
+                if rf_type == 'position': #get specific index
+                    data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
+                    data = data.to_frame().T
+                    data = data.apply(pd.to_numeric, errors='ignore') #convert all possible numeric columns to numeric
 
-        print('final:', data, data.dtypes)
-        data = data.round(1)
-        data.fillna('-', inplace=True)
-        if not kpi_filter:
-            _col_name = 'abs_gross'
-        else:
-            _col_name = kpi_filter+'_abs_gross'
-        print(_col_name)
-        data.rename(columns={'operator_name': _col_name}, inplace=True)
-        data.columns = beautify_columns(list(data.columns))
+                print('final:', data, data.dtypes)
+                data = data.round(1)
+                data.fillna('-', inplace=True)
+                if not kpi_filter:
+                    _col_name = 'abs_gross'
+                else:
+                    _col_name = kpi_filter+'_abs_gross'
+                print(_col_name)
+                data.rename(columns={'operator_name': _col_name}, inplace=True)
+                data.columns = beautify_columns(list(data.columns))
         print('res:', data.head())
     except Exception as e:
         print('Error:', e)
@@ -370,7 +372,9 @@ def get_abs_gross(entities, source):
         res.append({"type":"message", "data": get_resp_positive()})
         if chart_type:
             json_data = df_to_chart_data(data, type=chart_type)
-            res.append({"type": "chart", "data":json_data, "extras": {'yaxis_title': kpi_filter.capitalize()+' Base Share(%)'}})
+            chart_options = get_chart_options(type=chart_type)
+            chart_options['yAxis']['title'] = {'text': kpi_filter.capitalize()+' Absolute Gross (in 000s)'} 
+            res.append({"type": "chart", "data":json_data, "extras": chart_options})
         else:
             json_data = df_to_table_data(data)
             res.append({"type":"table", "data":json_data})
@@ -457,34 +461,32 @@ def get_industry_base(entities, source):
             _filters = modify_query('data', conditions)
             print(_filters)
             data = data.ix[eval(_filters)]
-        print(data.head(10))
         if chart_type:
             data['Month'] = data['month'].astype(str) +' '+ data['year'].astype(str)
-            data = data.groupby(['operator_name', 'Month', 'start_date']).mean().sort_index(level=2)
+            data = data.groupby(['Industry Base (in 000s)', 'Month', 'start_date']).mean().sort_index(level=2)
             data.index = data.index.droplevel(level=2)
             del data['year']
             print('chart data:\n', data)
             if chart_type in ['bar', 'pie']:
                 data.index = data.index.droplevel(level=1)
-                data = data.reset_index().set_index('operator_name')
+                data = data.reset_index().set_index('Industry Base (in 000s)')
         else:
             data = data.pivot_table(values=['ind_base'], columns=['start_date', 'month'], index=['Industry Base (in 000s)'], aggfunc=np.sum)
             data.columns = data.columns.droplevel([0, 1])
             data = data.reset_index()
-            print("datass:", data)
-        # Ready to Rocka!
-        numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
-        #sort by numeric columns
-        data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
-        if rf_type == 'position': #get specific index
-            data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
-            data = data.to_frame().T
-            data = data.apply(pd.to_numeric, errors='ignore') #convert all possible numeric columns to numeric
+            # Ready to Rocka!
+            numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
+            #sort by numeric columns
+            data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
+            if rf_type == 'position': #get specific index
+                data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
+                data = data.to_frame().T
+                data = data.apply(pd.to_numeric, errors='ignore') #convert all possible numeric columns to numeric
 
-        print('final:', data, data.dtypes)
-        data = data.round(1)
-        data.fillna('-', inplace=True)
-        data.columns = beautify_columns(list(data.columns))
+            print('final:', data, data.dtypes)
+            data = data.round(1)
+            data.fillna('-', inplace=True)
+            data.columns = beautify_columns(list(data.columns))
         print('res:', data.head())
     except Exception as e:
         print('Error:', e)
@@ -503,7 +505,10 @@ def get_industry_base(entities, source):
         res.append({"type":"message", "data": get_resp_positive()})
         if chart_type:
             json_data = df_to_chart_data(data, type=chart_type)
-            res.append({"type": "chart", "data":json_data, "extras": {'yaxis_title': kpi_filter.capitalize()+'  Industry Base'}})
+            chart_options = get_chart_options(type=chart_type)
+            chart_options['yAxis']['title'] = {'text': 'Industry Base (in 000s)'}
+            res.append({"type": "chart", "data":json_data, "extras": chart_options})
+
         else:
             json_data = df_to_table_data(data)
             res.append({"type":"table", "data":json_data})
@@ -593,31 +598,31 @@ def get_industry_gross(entities, source):
         print(data.head(10))
         if chart_type:
             data['Month'] = data['month'].astype(str) +' '+ data['year'].astype(str)
-            data = data.groupby(['operator_name', 'Month', 'start_date']).mean().sort_index(level=2)
+            data = data.groupby(['Industry Gross (in 000s)', 'Month', 'start_date']).mean().sort_index(level=2)
             data.index = data.index.droplevel(level=2)
             del data['year']
             print('chart data:\n', data)
             if chart_type in ['bar', 'pie']:
                 data.index = data.index.droplevel(level=1)
-                data = data.reset_index().set_index('operator_name')
+                data = data.reset_index().set_index('Industry Gross (in 000s)')
         else:
             data = data.pivot_table(values=['ind_gross'], columns=['start_date', 'month'], index=['Industry Gross (in 000s)'], aggfunc=np.sum)
             data.columns = data.columns.droplevel([0, 1])
             data = data.reset_index()
 
-        # Ready to Rocka!
-        numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
-        #sort by numeric columns
-        data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
-        if rf_type == 'position': #get specific index
-            data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
-            data = data.to_frame().T
-            data = data.apply(pd.to_numeric, errors='ignore') #convert all possible numeric columns to numeric
+            # Ready to Rocka!
+            numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
+            #sort by numeric columns
+            data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
+            if rf_type == 'position': #get specific index
+                data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
+                data = data.to_frame().T
+                data = data.apply(pd.to_numeric, errors='ignore') #convert all possible numeric columns to numeric
 
-        print('final:', data, data.dtypes)
-        data = data.round(1)
-        data.fillna('-', inplace=True)
-        data.columns = beautify_columns(list(data.columns))
+            print('final:', data, data.dtypes)
+            data = data.round(1)
+            data.fillna('-', inplace=True)
+            data.columns = beautify_columns(list(data.columns))
         print('res:', data.head())
     except Exception as e:
         print('Error:', e)
@@ -636,7 +641,9 @@ def get_industry_gross(entities, source):
         res.append({"type":"message", "data": get_resp_positive()})
         if chart_type:
             json_data = df_to_chart_data(data, type=chart_type)
-            res.append({"type": "chart", "data":json_data, "extras": {'yaxis_title': kpi_filter.capitalize()+'  Industry Gross'}})
+            chart_options = get_chart_options(type=chart_type)
+            chart_options['yAxis']['title'] = {'text': 'Industry Gross (in 000s)'}
+            res.append({"type": "chart", "data":json_data, "extras": chart_options})
         else:
             json_data = df_to_table_data(data)
             res.append({"type":"table", "data":json_data})
@@ -787,25 +794,26 @@ def get_base_share(entities, source):
                 data.columns = data.columns.droplevel([0, 1])
                 data = data.reset_index()
 
-        # Ready to Rocka!
-        numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
-        #sort by numeric columns
-        data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
-        if rf_type == 'position': #get specific index
-            data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
-            data = data.to_frame().T
-            data = data.apply(pd.to_numeric, errors='ignore') #convert all possible numeric columns to numeric
+                # Ready to Rocka!
+                numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
+                #sort by numeric columns
+                data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
+                if rf_type == 'position': #get specific index
+                    data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
+                    data = data.to_frame().T
+                    data = data.apply(pd.to_numeric, errors='ignore') #convert all possible numeric columns to numeric
 
-        print('final:', data, data.dtypes)
+                print('final:', data, data.dtypes)
+                data.fillna('-', inplace=True)
+                if not kpi_filter:
+                    _col_name = 'base_share'
+                else:
+                    _col_name = kpi_filter+'_base_share'
+                print(_col_name)
+                data.rename(columns={'operator_name': _col_name}, inplace=True)
+                data.columns = beautify_columns(list(data.columns))
+
         data = data.round(1)
-        data.fillna('-', inplace=True)
-        if not kpi_filter:
-            _col_name = 'base_share'
-        else:
-            _col_name = kpi_filter+'_base_share'
-        print(_col_name)
-        data.rename(columns={'operator_name': _col_name}, inplace=True)
-        data.columns = beautify_columns(list(data.columns))
         print('res:', data.head())
     except Exception as e:
         print('Error:', e)
@@ -824,7 +832,10 @@ def get_base_share(entities, source):
         res.append({"type":"message", "data": get_resp_positive()})
         if chart_type:
             json_data = df_to_chart_data(data, type=chart_type)
-            res.append({"type": "chart", "data":json_data, "extras": {'yaxis_title': kpi_filter.capitalize()+' Base Share(%)'}})
+            chart_options = get_chart_options(type=chart_type)
+            chart_options['yAxis']['title'] = {'text': kpi_filter.capitalize()+' Base Share (%)'}
+            res.append({"type": "chart", "data":json_data, "extras": chart_options})
+
         else:
             json_data = df_to_table_data(data)
             res.append({"type":"table", "data":json_data})
@@ -988,24 +999,24 @@ def get_gross_share(entities, source):
                 data.columns = data.columns.droplevel([0, 1])
                 data = data.reset_index()
 
-        numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
-        data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
-        if rf_type == 'position': #get specific index
-            data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
-            data = data.to_frame().T
-            data = data.apply(pd.to_numeric, errors='ignore') #convert all possible numeric columns to numeric
- 
-        print('final:', data)
+                numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
+                data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
+                if rf_type == 'position': #get specific index
+                    data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
+                    data = data.to_frame().T
+                    data = data.apply(pd.to_numeric, errors='ignore') #convert all possible numeric columns to numeric
+                print('final:', data)
+                data.fillna('-', inplace=True)
+                print(kpi_filter+'_gross_share')
+                if not kpi_filter:
+                    _col_name = 'gross_share'
+                else:
+                    _col_name = kpi_filter+'_gross_share'
+                print(_col_name)
+                data.rename(columns={'operator_name': _col_name}, inplace=True)
+                data.columns = beautify_columns(list(data.columns))
+
         data = data.round(1)
-        data.fillna('-', inplace=True)
-        print(kpi_filter+'_gross_share')
-        if not kpi_filter:
-            _col_name = 'gross_share'
-        else:
-            _col_name = kpi_filter+'_gross_share'
-        print(_col_name)
-        data.rename(columns={'operator_name': _col_name}, inplace=True)
-        data.columns = beautify_columns(list(data.columns))
         print('res:', data.head())
     except Exception as e:
         print('Error:', e)
@@ -1024,7 +1035,10 @@ def get_gross_share(entities, source):
         res.append({"type":"message", "data": get_resp_positive()})
         if chart_type:
             json_data = df_to_chart_data(data, type=chart_type)
-            res.append({"type": "chart", "data":json_data, "extras": {'yaxis_title': kpi_filter.capitalize()+' Gross Share(%)'}})
+            chart_options = get_chart_options(type=chart_type)
+            chart_options['yAxis']['title'] = {'text': kpi_filter.capitalize()+' Gross Share (%)'}
+            res.append({"type": "chart", "data":json_data, "extras": chart_options})
+
         else:
             json_data = df_to_table_data(data)
             res.append({"type":"table", "data":json_data})

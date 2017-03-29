@@ -302,21 +302,32 @@ def get_base_rank(entities, source):
                                 'difference': new_df['month_min'][0]+'_vs_'+new_df['month_max'][0]},
                                 inplace=True)
         else:
-            data = data.pivot_table(values=['base_rank'], columns=['start_date', 'month'], index=pivot_index, aggfunc=np.sum)
-            data.columns = data.columns.droplevel([0, 1])
-            data = data.reset_index()
+            if chart_type:
+                data['Month'] = data['month'].astype(str) +' '+ data['year'].astype(str)
+                data = data.groupby(['operator_name', 'Month', 'start_date']).mean().sort_index(level=2)
+                print('sorted', data)
+                data.index = data.index.droplevel(level=2)
+                del data['year']
+                print('chart data:\n', data)
+                if chart_type in ['bar', 'pie']:
+                    data.index = data.index.droplevel(level=1)
+                    data = data.reset_index().set_index('operator_name')
+            else:
+                data = data.pivot_table(values=['base_rank'], columns=['start_date', 'month'], index=pivot_index, aggfunc=np.sum)
+                data.columns = data.columns.droplevel([0, 1])
+                data = data.reset_index()
 
-        numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
-        data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
-        if rf_type == 'position': #get specific index
-            data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
-            data = data.to_frame().T
-            data = data.apply(pd.to_numeric, errors='ignore') #convert all possible numeric columns to numeric
+                numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
+                data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
+                if rf_type == 'position': #get specific index
+                    data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
+                    data = data.to_frame().T
+                    data = data.apply(pd.to_numeric, errors='ignore') #convert all possible numeric columns to numeric
 
-        data.rename(columns={'operator_name': kpi_filter+'_rank'}, inplace=True)
-        data = data.round(1)
-        data.fillna('-', inplace=True)
-        data.columns = beautify_columns(list(data.columns))
+                data.rename(columns={'operator_name': kpi_filter+'_rank'}, inplace=True)
+                data = data.round(1)
+                data.fillna('-', inplace=True)
+                data.columns = beautify_columns(list(data.columns))
         print('res:', data.head())
 
     except Exception as e:
@@ -336,7 +347,10 @@ def get_base_rank(entities, source):
         res.append({"type":"message", "data": get_resp_positive()})
         if chart_type:
             json_data = df_to_chart_data(data, type=chart_type)
-            res.append({"type": "chart", "data":json_data})
+            chart_options = get_chart_options(type=chart_type)
+            chart_options['yAxis']['title'] = {'text': entities.get('kpi_filter', '').capitalize()+' Base Rank'}
+            res.append({"type": "chart", "data":json_data, "extras": chart_options})
+
         else:
             json_data = df_to_table_data(data)
             res.append({"type":"table", "data":json_data})
@@ -486,21 +500,32 @@ def get_gross_rank(entities, source):
                                 'difference': new_df['month_min'][0]+'_vs_'+new_df['month_max'][0]},
                                 inplace=True)
         else:
-            data = data.pivot_table(values=['gross_rank'], columns=['start_date', 'month'], index=pivot_index, aggfunc=np.sum)
-            data.columns = data.columns.droplevel([0, 1])
-            data = data.reset_index()
+            if chart_type:
+                data['Month'] = data['month'].astype(str) +' '+ data['year'].astype(str)
+                data = data.groupby(['operator_name', 'Month', 'start_date']).mean().sort_index(level=2)
+                print('sorted', data)
+                data.index = data.index.droplevel(level=2)
+                del data['year']
+                print('chart data:\n', data)
+                if chart_type in ['bar', 'pie']:
+                    data.index = data.index.droplevel(level=1)
+                    data = data.reset_index().set_index('operator_name')
+            else:
+                data = data.pivot_table(values=['gross_rank'], columns=['start_date', 'month'], index=pivot_index, aggfunc=np.sum)
+                data.columns = data.columns.droplevel([0, 1])
+                data = data.reset_index()
 
-        numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
-        data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
-        if rf_type == 'position': #get specific index
-            data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
-            data = data.to_frame().T
-            data = data.apply(pd.to_numeric, errors='ignore') #convert all possible numeric columns to numeric
+                numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
+                data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
+                if rf_type == 'position': #get specific index
+                    data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
+                    data = data.to_frame().T
+                    data = data.apply(pd.to_numeric, errors='ignore') #convert all possible numeric columns to numeric
 
-        data.rename(columns={'operator_name': kpi_filter+'_rank'}, inplace=True)
-        data = data.round(1)
-        data.fillna('-', inplace=True)
-        data.columns = beautify_columns(list(data.columns))
+                data.rename(columns={'operator_name': kpi_filter+'_rank'}, inplace=True)
+                data = data.round(1)
+                data.fillna('-', inplace=True)
+                data.columns = beautify_columns(list(data.columns))
         print('res:', data.head())
 
     except Exception as e:
@@ -520,7 +545,10 @@ def get_gross_rank(entities, source):
         res.append({"type":"message", "data": get_resp_positive()})
         if chart_type:
             json_data = df_to_chart_data(data, type=chart_type)
-            res.append({"type": "chart", "data":json_data})
+            chart_options = get_chart_options(type=chart_type)
+            res.append({"type": "chart", "data":json_data, "extras": {'yaxis_title': entities.get('kpi_filter').capitalize()+' Base Share Minus Gross Share(%)'}})
+            chart_options['yAxis']['title'] = {'text': entities.get('kpi_filter', '').capitalize()+' Gross Rank'}
+
         else:
             json_data = df_to_table_data(data)
             res.append({"type":"table", "data":json_data})
