@@ -2,7 +2,6 @@
 #actions t1m/t2m/t3m quality, net_to_gross, base_HHI
 
 from .core_func import *
-import pandas
 
 def get_quality_share(entities, source):
     rel_exp = entities.get('rel_exp')
@@ -158,14 +157,7 @@ def get_quality_share(entities, source):
     return res
 
 def get_quality_swing(entities, source):
-    value = entities.get('rel_exp')
-    operators, dict_ =  {'>':'gt', '<':'lt'}, {}
-    for k,v in operators.items():
-        if k in entities['category']:
-            dict_.update({'value':value,'operator':v})
     rel_exp = entities.get('rel_exp')
-    if dict_: rel_exp = dict_
-    if (rel_exp) and (not isinstance(rel_exp, list)): rel_exp = [rel_exp]
     if rel_exp:
         _rel_exp = []
         for exp in rel_exp:
@@ -182,7 +174,7 @@ def get_quality_swing(entities, source):
         trend_exp['trend'] = trend_exp['trend'].strip()
         trend_exp['deviation'] = str(trend_exp.get('deviation', 0)).strip('%')
 
-    keywords = entities.get('keyword', []).split()
+    keywords = entities.get('keyword', [])
     columns += [k for k in keywords if k not in columns]
 
     row_filter = entities.get('row_filter_exp')
@@ -195,7 +187,7 @@ def get_quality_swing(entities, source):
     quality = entities.get('quality_measure', None)
     if not quality:
         return error_mesg('Please specify one of T1M/T2M/T3M')
-    if isinstance(quality, list): quality = quality[0].strip()
+
     if 'month' in columns:
         columns.extend(['year', 'start_date'])
         group_by.extend(['month', 'year', 'start_date'])
@@ -283,7 +275,7 @@ def get_quality_swing(entities, source):
             data = data.groupby(['operator_name', 'Month', 'start_date']).mean().sort_index(level=2)
             data.index = data.index.droplevel(level=2)
             del data['year']
-            #del data[kpi_abs]
+            del data[kpi_abs]
             if chart_type in ['bar', 'pie']:
                 data.index = data.index.droplevel(level=1)
         else:
@@ -324,30 +316,14 @@ def get_quality_swing(entities, source):
         res.append({"type":"message", "data": get_resp_positive()})
         if chart_type:
             json_data = df_to_chart_data(data, type=chart_type)
-            for i in (json_data):
-                _da, list_ = i['data'], []
-                for i in _da: 
-                    i[1] = float(i[1])
-                    list_.append(i)
-                _da = list_
-            chart_options = get_chart_options(type=chart_type)
-            chart_options['yAxis']['title'] = {'text': entities.get('kpi_filter', '').capitalize()+' T1M Quality Swing'}
-            res.append({"type": "chart", "data":json_data, "extras": chart_options} )
-            #res.append({"type": "chart", "data":json_data})
+            res.append({"type": "chart", "data":json_data})
         else:
             json_data = df_to_table_data(data)
             res.append({"type":"table", "data":json_data})
     return res
 
 def get_abs_quality(entities, source):
-    value = entities.get('rel_exp')
-    operators, dict_ =  {'>':'gt', '<':'lt'}, {}
-    for k,v in operators.items():
-        if k in entities['category']:
-            dict_.update({'value':value,'operator':v})
     rel_exp = entities.get('rel_exp')
-    if dict_: rel_exp = dict_
-    if (rel_exp) and (not isinstance(rel_exp, list)): rel_exp = [rel_exp]
     if rel_exp:
         _rel_exp = []
         for exp in rel_exp:
@@ -363,21 +339,20 @@ def get_abs_quality(entities, source):
     if trend_exp:
         trend_exp['trend'] = trend_exp['trend'].strip()
         trend_exp['deviation'] = str(trend_exp.get('deviation', 0)).strip('%')
-    keywords = entities.get('keyword', []).split()
 
+    keywords = entities.get('keyword', [])
     columns += [k for k in keywords if k not in columns]
 
     row_filter = entities.get('row_filter_exp')
     if not row_filter:
         row_filter = {'type':'top', 'count': 100000}
-    rf_type = row_filter.get('type', '')
+    rf_type = row_filter.get('type')
     rf_order_asc = False if rf_type in ['top', 'position'] else True
     rf_count = row_filter.get('count', 1)
 
     quality = entities.get('quality_measure', None)
     if not quality:
         return error_mesg('Please specify one of T1M/T2M/T3M')
-    if isinstance(quality, list): quality = quality[0]
 
     if 'month' in columns:
         columns.extend(['year', 'start_date'])
@@ -417,6 +392,7 @@ def get_abs_quality(entities, source):
 
     if not query:
         return error_mesg(get_resp_negative())
+
     query = modify_query(tb_name, query)
     print(query)
     chart_type = entities.get('viz_type')
@@ -424,9 +400,8 @@ def get_abs_quality(entities, source):
     try:
         #if True:
         quality = quality.strip().lower()
-        #b = table_sniper[['operator_name', 'geo_rgn_name', 'geo_city_name', 'month',
-                    #'year', 'start_date', 'abs_gross', quality+'_quality_abs']].groupby(columns).sum()
-        b = table_sniper.groupby(['operator_name', 'month', 'year', 'start_date'])[['abs_gross', quality+'_quality_abs']].sum()                    
+        b = table_sniper[['operator_name', 'geo_rgn_name', 'geo_city_name', 'month',
+                    'year', 'start_date', 'abs_gross', quality+'_quality_abs']].groupby(columns).sum()
         data = (b[quality+'_quality_abs']/1000).round(1)
         data.name = 'abs_quality'
         data = pd.DataFrame(data).reset_index()
@@ -484,15 +459,13 @@ def get_abs_quality(entities, source):
                 data = data.groupby(['operator_name', 'Month', 'start_date']).mean().sort_index(level=2)
                 data.index = data.index.droplevel(level=2)
                 del data['year']
-                #del data[kpi_abs]
+                del data[kpi_abs]
                 if chart_type in ['bar', 'pie']:
                     data.index = data.index.droplevel(level=1)
             else:
                 data = data.round(2)
                 #data['quality'] = data['quality'].astype(str) + '%'
-                quality+'_quality_abs'
                 data = data.pivot_table(values=['abs_quality'], columns=['start_date', 'month'], index=pivot_index, aggfunc=np.sum)
-                #data = data.pivot_table(values=[quality+'_quality_abs'], columns=['start_date', 'month'], index=pivot_index, aggfunc=np.sum)
                 if data.empty:
                     return error_mesg(get_resp_no_records())
                 data.columns = data.columns.droplevel([0, 1])
@@ -527,16 +500,7 @@ def get_abs_quality(entities, source):
         res.append({"type":"message", "data": get_resp_positive()})
         if chart_type:
             json_data = df_to_chart_data(data, type=chart_type)
-            for i in (json_data):
-                _da, list_ = i['data'], []
-                for i in _da: 
-                    i[1] = float(i[1])
-                    list_.append(i)
-                _da = list_
-            chart_options = get_chart_options(type=chart_type)
-            chart_options['yAxis']['title'] = {'text': entities.get('kpi_filter', '').capitalize()+' T1M Absolute Quality'}
-            res.append({"type": "chart", "data":json_data, "extras": chart_options} )
-            #res.append({"type": "chart", "data":json_data})
+            res.append({"type": "chart", "data":json_data})
         else:
             json_data = df_to_table_data(data)
             res.append({"type":"table", "data":json_data})
@@ -831,7 +795,7 @@ def get_quality(entities, source):
                 data = data.groupby(['operator_name', 'Month', 'start_date']).mean().sort_index(level=2)
                 data.index = data.index.droplevel(level=2)
                 del data['year']
-                #del data[kpi_abs]
+                del data[kpi_abs]
                 if chart_type in ['bar', 'pie']:
                     data.index = data.index.droplevel(level=1)
             else:
@@ -872,16 +836,7 @@ def get_quality(entities, source):
         res.append({"type":"message", "data": get_resp_positive()})
         if chart_type:
             json_data = df_to_chart_data(data, type=chart_type)
-            for i in (json_data):
-                _da, list_ = i['data'], []
-                for i in _da:
-                    i[1] = float(i[1])
-                    list_.append(i)
-                _da = list_
-            chart_options = get_chart_options(type=chart_type)
-            chart_options['yAxis']['title'] = {'text': entities.get('kpi_filter', '').capitalize()+' T1M Quality'}
-            res.append({"type": "chart", "data":json_data, "extras": chart_options} )
-            #res.append({"type": "chart", "data":json_data})
+            res.append({"type": "chart", "data":json_data})
         else:
             json_data = df_to_table_data(data)
             res.append({"type":"table", "data":json_data})
@@ -889,7 +844,6 @@ def get_quality(entities, source):
 
 def get_net_to_gross(entities, source):
     rel_exp = entities.get('rel_exp')
-    if not isinstance(rel_exp, list): rel_exp= [rel_exp]
     if rel_exp:
         _rel_exp = []
         for exp in rel_exp:
@@ -962,7 +916,7 @@ def get_net_to_gross(entities, source):
     chart_type = entities.get('viz_type')
     # execution
     try:
-        cols = ['operator_name', 'geo_rgn_name', 'geo_city_name','month', 'year', 'start_date', kpi_filter+'_base', kpi_filter+'_gross']
+        cols = ['operator_name', 'geo_rgn_name', 'month', 'year', 'start_date', kpi_filter+'_base', kpi_filter+'_gross']
         if "geo_rgn_name" in columns:
             a = table_sniper[cols].groupby(['operator_name', 'geo_rgn_name', 'month', 'year', 'start_date']).sum()
             b = a.sortlevel([0, 1, 4])
@@ -1004,10 +958,7 @@ def get_net_to_gross(entities, source):
             data = data.pivot_table(values=['net2gross'], columns=['start_date', 'month'], index=pivot_index, aggfunc=np.sum)
             data.columns = data.columns.droplevel([0, 1])
             data = data.reset_index()
-            try: 
-                if entities['rel_exp'][0]['value'] == -1: data = pandas.DataFrame
-            except:pass
-            if data.empty: return error_mesg(get_resp_no_records())
+
             numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
             data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
             if rf_type == 'position': #get specific index
@@ -1070,18 +1021,16 @@ def get_base_hhi(entities, source):
     else:
         kpi_filter = 'abs'
         columns.append(kpi_filter+'_base')
+
     row_filter = entities.get('row_filter_exp')
     if not row_filter:
         row_filter = {'type':'top', 'count': 100000}
-    category = entities.get('category', '')
-    rf_type = row_filter.get('type', '')
-    rf_order_asc = False if rf_type in ['top', 'position', 'bottom'] else True
-    #rf_order_asc = False if 'top' in rf_type else True
+    rf_type = row_filter.get('type')
+    rf_order_asc = False if rf_type in ['top', 'position'] else True
     rf_count = row_filter.get('count', 1)
-    if ('high' in category.lower()) or ('most' in category.lower()):rf_order_asc = True
+
     keywords = entities.get('keyword', [])
     columns += [k for k in keywords if k not in columns]
-    #columns.remove('geo_rgn_name')
     if 'month' in columns:
         columns.extend(['year', 'start_date'])
         group_by.extend(['month', 'year', 'start_date'])
@@ -1095,13 +1044,13 @@ def get_base_hhi(entities, source):
     pivot_index = []
     if 'geo_city_name' in columns:
         group_by.append('geo_city_name')
-        #pivot_index.append('geo_city_name')
+        pivot_index.append('geo_city_name')
     if 'geo_rgn_name' in columns:
         group_by.append('geo_rgn_name')
-        #pivot_index.append('geo_rgn_name')
+        pivot_index.append('geo_rgn_name')
     if 'geo_cnty_name' in columns:
         group_by.append('geo_cnty_name')
-        #pivot_index.append('geo_cnty_name')
+        pivot_index.append('geo_cnty_name')
 
     tb_name = 'table_sniper' #get_tbname(columns)
     #modify column_names as per the table
@@ -1125,8 +1074,7 @@ def get_base_hhi(entities, source):
     print(query)
     chart_type = entities.get('viz_type')
     # execution
-    #try:
-    if True:
+    try:
         if 'geo_rgn_name' in columns:
             b = table_sniper.groupby(['operator_name', 'geo_rgn_name', 'month', 'year', 'start_date'])[kpi_filter+'_base'].sum()
             c = pd.DataFrame(b).groupby(level=[1, 2], group_keys=False).apply( \
@@ -1161,9 +1109,9 @@ def get_base_hhi(entities, source):
             data['base_HHI'] = data['base_HHI'].round(0).astype(int)
             data['main_col'] = "Overall"
             pivot_index.append('main_col')
+
         print('bf:', data.head(10))
         if conditions:
-            conditions = conditions.replace('geo_rgn_name', 'main_col').replace('geo_city_name', 'main_col')
             _filters = modify_query('data', conditions)
             print(_filters)
             data = data.ix[eval(_filters)]
@@ -1182,12 +1130,8 @@ def get_base_hhi(entities, source):
                 return error_mesg(get_resp_no_records())
             data.columns = data.columns.droplevel([0, 1])
             data = data.reset_index()
-            if 'comp' not in category.lower():
-                rf_order_asc = False if 'top' in rf_type.lower() else True
             numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
             data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
-            if 'bottom' in rf_type.lower():
-                data = data.iloc[::-1]
             if rf_type == 'position': #get specific index
                 data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
                 data = data.to_frame().T
@@ -1203,8 +1147,7 @@ def get_base_hhi(entities, source):
             data.replace(to_replace='0.0%', value='-', inplace=True)
             data.columns = beautify_columns(list(data.columns))
         print('res:', data.head())
-    #except Exception as e:
-    if False:
+    except Exception as e:
         print('Error:', e)
         return error_mesg(get_resp_negative())
 
@@ -1221,17 +1164,9 @@ def get_base_hhi(entities, source):
         res.append({"type":"message", "data": get_resp_positive()})
         if chart_type:
             json_data = df_to_chart_data(data, type=chart_type)
-            for i in (json_data):
-                _da, list_ = i['data'], []
-                for i in _da:
-                    i[1] = float(i[1])
-                    list_.append(i)
-                _da = list_
-            #for element in json_data:element.update({'data':[[item[0], int(item[1])] for item in json_data[0]['data']]})
             chart_options = get_chart_options(type=chart_type)
             chart_options['yAxis']['title'] = {'text': entities.get('kpi_filter', '').capitalize()+' Base HHI'}
             res.append({"type": "chart", "data":json_data, "extras": chart_options} )
-            #res.append({"type": "chart", "data":json_data, "extras": {'yaxis_title': kpi_filter.capitalize()+' Base HHI(%)'}})
         else:
             json_data = df_to_table_data(data)
             res.append({"type":"table", "data":json_data})
@@ -1279,13 +1214,13 @@ def get_gross_hhi(entities, source):
     pivot_index = []
     if 'geo_city_name' in columns:
         group_by.append('geo_city_name')
-        #pivot_index.append('geo_city_name')
+        pivot_index.append('geo_city_name')
     if 'geo_rgn_name' in columns:
         group_by.append('geo_rgn_name')
-        #pivot_index.append('geo_rgn_name')
+        pivot_index.append('geo_rgn_name')
     if 'geo_cnty_name' in columns:
         group_by.append('geo_cnty_name')
-        #pivot_index.append('geo_cnty_name')
+        pivot_index.append('geo_cnty_name')
 
     tb_name = 'table_sniper' #get_tbname(columns)
     #modify column_names as per the table
@@ -1347,7 +1282,6 @@ def get_gross_hhi(entities, source):
 
         print(data.head(10))
         if conditions:
-            conditions = conditions.replace('geo_rgn_name', 'main_col').replace('geo_city_name', 'main_col')
             _filters = modify_query('data', conditions)
             print(_filters)
             data = data.ix[eval(_filters)]
@@ -1399,13 +1333,6 @@ def get_gross_hhi(entities, source):
         res.append({"type":"message", "data": get_resp_positive()})
         if chart_type:
             json_data = df_to_chart_data(data, type=chart_type)
-            for i in (json_data):
-                _da, list_ = i['data'], []
-                for i in _da: 
-                    i[1] = float(i[1])
-                    list_.append(i)
-                _da = list_
-
             chart_options = get_chart_options(type=chart_type)
             chart_options['yAxis']['title'] = {'text': entities.get('kpi_filter', '').capitalize()+' Gross HHI'}
             res.append({"type": "chart", "data":json_data, "extras": chart_options} )

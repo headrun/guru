@@ -8,7 +8,6 @@ import time
 import string
 from pprint import pprint
 #import requests
-import re
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -26,7 +25,7 @@ from .renderers import *
 
 module_dir = os.path.dirname(__file__)  #get current directory
 
-CLIENT_ACCESS_TOKEN = "33af22a1bf094d68bdab3867be666213"
+CLIENT_ACCESS_TOKEN = "fef4ba6d97ad4409a820a31f8241234f"
 
 import apiai
 ai = apiai.ApiAI(CLIENT_ACCESS_TOKEN)
@@ -72,8 +71,8 @@ def get_answer(request):
     answer = {}
     print('\n'*2)
 
-    if True:
-    #try:
+    #if True:
+    try:
         #apiai request
         req = ai.text_request()
         req.query = user_query
@@ -81,6 +80,7 @@ def get_answer(request):
         t1 = time.time()
         resp = json.loads(req.getresponse().read().decode('utf-8'))
         exec_times['api.ai'] = time.time() - t1
+
         print('apiai_response:' + '\n\n')
         result = resp['result']
         pprint(str(result).encode('utf-8', 'ignore'))
@@ -88,11 +88,14 @@ def get_answer(request):
         raw_info['action'] = result.get('action', '')
         raw_info['entities'] = result.get('parameters', {})
         raw_info['score'] = result.get('score', '')
+
         action = result.get('action', None)
         confidence = result.get('score', None)
         print('ACTION:', action)
+
         if not action:
             pass
+
         if action == 'input.unknown' or result.get('actionIncomplete', None):
             answer = {}
             answer['type'] = 'message'
@@ -122,29 +125,9 @@ def get_answer(request):
                 return JsonResponse({'result':[answer], 'info':raw_info})
 
             return JsonResponse({'result': answer['data'], 'info': raw_info})
-        x = resp.get('result').get('parameters').get('start_date')
-        if not isinstance(x, list): x = [x]
-        dat = [i.replace('2017', '2016') for i in x if '-' in i]
-        result['parameters']['start_date'] = dat
-        if '&' in resp.get('result').get('resolvedQuery'):
-            month_values = re.findall('(\D{3}\'\d+)', resp.get('result').get('resolvedQuery'))
-            import dateparser
-            list_to_datetime = '/'.join([str(dateparser.parse(i)).split(' ')[0].replace('2017', '2016') for i in month_values])
-            if list_to_datetime: result['parameters']['start_date'] = list_to_datetime
-        '''qu = resp.get('result').get('resolvedQuery')
-        if "'" in qu:
-            import pdb;pdb.set_trace()
-            import re
-            try:pat = re.findall("'\d{2}", qu)[0]
-            except: pat = ''
-            x = resp.get('result').get('parameters').get('start_date')
-            try:y = re.findall('\d{4}',x)[0]
-            except: y = ''
-            pat = '{}{}'.format('20', pat).replace("'", '')
-            dat = x.replace(y, pat)
-            result['parameters']['start_date'] = dat'''
-        result['parameters']['category'] = resp.get('result').get('resolvedQuery')
+
         entities = result['parameters']
+
         if action == "get_help":
             answer = {}
             answer['type'] = 'message'
@@ -273,6 +256,7 @@ def get_answer(request):
                 return JsonResponse({'result': answer['data'],'info': {}})
 
         else: #any other action
+
             res_data = eval(action)(entities, source)
 
             if source != 'web':
@@ -288,8 +272,8 @@ def get_answer(request):
 
             return JsonResponse({'result':answer['data'], 'info':raw_info})
 
-    #except Exception as e:
-    if False:
+    except Exception as e:
+    #if False:
         print('\n')
         print('actual error:')
         print(e, 'line:', sys.exc_info()[-1].tb_lineno)

@@ -38,12 +38,6 @@ def error_mesg(mesg):
     _mesg['data'] = mesg
     return [_mesg]
 
-def convertToInt(col):
-    numerics = ['float16', 'float32', 'float64', 'int16', 'int32', 'int64']
-    if col.dtype in numerics:
-        col = col.fillna('0.0').astype(int)
-        return col
-
 def get_chart_options(type):
     options = {}
     if type=='pie':
@@ -85,13 +79,7 @@ def df_to_table_data(_df):
 #converts DataFrame to chart specific data.
 def df_to_chart_data(_df, type='line'):
     json_data = []
-    months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
     for _data in levels(_df, type):
-        mon_data = _data['data']
-        mon_data.sort(key = lambda ll: months.index(ll[0].split(' ')[0]))
-        for i in mon_data:
-            if (i[1] == '-') or (str(i[1]) == 'nan'): i[1] = 0
-        _data['data'] = mon_data
         json_data.append(_data)
     print(json_data)
     return json_data
@@ -437,11 +425,10 @@ def get_conditions(entities, columns=[]):
     if operator_name:
         condition_list.append("(<<df>>['<<operator_name>>'].isin(%s))"%operator_name)
         columns.append('operator_name')
+
     geo_city_name = entities.get('geo_city_name')
     if geo_city_name:
-        if not isinstance(geo_city_name, list):
-            condition_list.append("(<<df>>['<<geo_city_name>>'].isin(['%s']))"%geo_city_name)
-        else:condition_list.append("(<<df>>['<<geo_city_name>>'].isin(%s))"%geo_city_name)
+        condition_list.append("(<<df>>['<<geo_city_name>>'].isin(%s))"%geo_city_name)
         columns.append('geo_city_name')
 
     geo_rgn_name = entities.get('geo_rgn_name')
@@ -455,6 +442,7 @@ def get_conditions(entities, columns=[]):
         columns.append('geo_cnty_name')
 
     start_date = entities.get('start_date', None)
+
     if start_date:
         try:
             if type(start_date) is dict:
@@ -465,22 +453,18 @@ def get_conditions(entities, columns=[]):
                     diff = datetime.datetime.strptime(dates[0], date_format) - datetime.datetime.strptime(dates[1], date_format)
                     if diff.total_seconds() > 0:
                         dates = dates[::-1]
-                    condition_list.append("(<<df>>['<<start_date>>'].isin(pd.date_range(start='%s', end='%s', freq='D')))"%())
+                    condition_list.append("(<<df>>['<<start_date>>'].isin(pd.date_range(start='%s', end='%s', freq='D')))"%dates)
                     columns.append('month')
                 elif start_date.get('date', None):
                     condition_list.append("(<<df>>['<<start_date>>'] == '%s')"%start_date['date'])
                     columns.append('month')
             elif type(start_date) is list:
                 for date in start_date:
-                    st_date, end_date = date.split('/')[0].replace('-16', '-01'), date.split('/')[-1]
-                    #dates = tuple(st_date, end_date)
-                    condition_list.append("(<<df>>['<<start_date>>'].isin(pd.date_range(start='%s', end='%s', freq='D')))"%(st_date, end_date))
+                    dates = tuple(date.split('/'))
+                    condition_list.append("(<<df>>['<<start_date>>'].isin(pd.date_range(start='%s', end='%s', freq='D')))"%dates)
                     columns.append('month')
             elif type(start_date) is str:
-                if '/' in start_date:
-                    st_date, end_date = start_date.split('/')[0].replace('-16', '-01'), start_date.split('/')[-1]
-                    dates = tuple((st_date, end_date))
-                else: dates = tuple(start_date.split('/'))
+                dates = tuple(start_date.split('/'))
                 condition_list.append("(<<df>>['<<start_date>>'].isin(pd.date_range(start='%s', end='%s', freq='D')))"%dates)
                 columns.append('month')
 

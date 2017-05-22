@@ -729,12 +729,6 @@ def get_bs_minus_gs_rank(entities, source):
         res.append({"type":"message", "data": get_resp_positive()})
         if chart_type:
             json_data = df_to_chart_data(data, type=chart_type)
-            for i in (json_data):
-                _da, list_ = i['data'], []
-                for i in _da: 
-                    i[1] = int(i[1])
-                    list_.append(i)
-                _da = list_
             res.append({"type": "chart", "data":json_data, "extras": {'yaxis_title': entities.get('kpi_filter').capitalize()+' Base Share Minus Gross Share Rank'}})
         else:
             json_data = df_to_table_data(data)

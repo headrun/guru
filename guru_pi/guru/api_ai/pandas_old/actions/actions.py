@@ -1,5 +1,5 @@
 from .core_func import *
-import pandas
+
 def get_abs_base(entities, source):
     rel_exp = entities.get('rel_exp')
     if rel_exp:
@@ -85,9 +85,12 @@ def get_abs_base(entities, source):
             b.name = 'abs_base'
             data = pd.DataFrame(b).reset_index()
 
+        print(data.head(10))
         if conditions:
             _filters = modify_query('data', conditions)
+            print(_filters)
             data = data.ix[eval(_filters)]
+        print(data.head(10))
 
         if trend_exp: # query is "trendy", need futher processing.
             group_min = data[data['start_date']==data['start_date'].min()].reset_index(drop=True)
@@ -110,6 +113,7 @@ def get_abs_base(entities, source):
                 _data = new_df[['operator_name', 'abs_base_min', 'abs_base_max', 'difference']]
                 _error_if_empty = 'No such Operators found'
 
+            print('min-max month:', _data)
             # Applying "trend" filter
             if trend_exp['trend'] == 'increase':
                 _data = _data[new_df['difference'] > float(trend_exp['deviation'])]
@@ -130,8 +134,10 @@ def get_abs_base(entities, source):
             if chart_type:
                 data['Month'] = data['month'].astype(str) +' '+ data['year'].astype(str)
                 data = data.groupby(['operator_name', 'Month', 'start_date']).mean().sort_index(level=2)
+                print('sorted', data)
                 data.index = data.index.droplevel(level=2)
                 del data['year']
+                print('chart data:\n', data)
                 if chart_type in ['bar', 'pie']:
                     data.index = data.index.droplevel(level=1)
                     data = data.reset_index().set_index('operator_name')
@@ -193,17 +199,19 @@ def get_abs_gross(entities, source):
             _rel_exp.append(exp)
         entities['rel_exp'] = _rel_exp
     print(entities)
+
     columns = ['operator_name']
     group_by = ['operator_name']
     condition_list, columns = get_conditions(entities, columns)
     #agg_func_list, columns = get_agg_functions(entities, columns)
-    kpi_filter = entities.get('kpi_filter').strip().replace('-', '_')
+
+    kpi_filter = entities.get('kpi_filter')
     if kpi_filter:
-        if( '_10' in kpi_filter)  or ('_20' in kpi_filter): kpi_abs = '{}{}'.format(kpi_filter.strip(), '_abs_gross')
-        else:kpi_abs = kpi_filter+'_gross'
+        kpi_abs = kpi_filter+'_gross'
     else:
         kpi_abs = 'abs_gross'
     columns.append(kpi_abs)
+
     trend_exp = entities.get('trend_exp')
     if trend_exp:
         trend_exp['trend'] = trend_exp['trend'].strip()
@@ -342,10 +350,8 @@ def get_abs_gross(entities, source):
                 if not kpi_filter:
                     _col_name = 'abs_gross'
                 else:
-                    kpi_filter = kpi_filter.replace('_', '-')
                     _col_name = kpi_filter+'_abs_gross'
                 print(_col_name)
-                _col_name = _col_name.title().replace('_', ' ')
                 data.rename(columns={'operator_name': _col_name}, inplace=True)
                 data.columns = beautify_columns(list(data.columns))
         print('res:', data.head())
@@ -443,14 +449,12 @@ def get_industry_base(entities, source):
     try:
         #get rows and columns
         #t1 = eval(query)
-        #b = table_sniper.groupby(['operator_name', 'month', 'year', 'start_date'])['abs_base'].sum()
-        b = table_sniper.groupby(['operator_name', 'month', 'year', 'start_date'])[kpi_abs].sum()
+        b = table_sniper.groupby(['operator_name', 'month', 'year', 'start_date'])['abs_base'].sum()
         c = pd.DataFrame(b).groupby(level=[1, 2, 3]).apply(lambda x : x.sum())
         data = (c/1000).round(1)
         data['Industry Base (in 000s)'] = 'Industry'
         data = pd.DataFrame(data).reset_index()
-        #data.rename(columns={'abs_base':'ind_base'}, inplace=True)
-        data.rename(columns={kpi_abs:'ind_base'}, inplace=True)
+        data.rename(columns={'abs_base':'ind_base'}, inplace=True)
 
         print(data.head(10))
         if conditions:
@@ -654,6 +658,7 @@ def get_base_share(entities, source):
             _rel_exp.append(exp)
         entities['rel_exp'] = _rel_exp
     print(entities)
+
     columns = ['operator_name']
     group_by = ['operator_name']
     condition_list, columns = get_conditions(entities, columns)
@@ -661,7 +666,7 @@ def get_base_share(entities, source):
 
     kpi_filter = entities.get('kpi_filter')
     if kpi_filter:
-        kpi_abs = kpi_filter.strip()+'_abs_base'
+        kpi_abs = kpi_filter+'_base'
     else:
         kpi_abs = 'abs_base'
     columns.append(kpi_abs)
@@ -677,6 +682,7 @@ def get_base_share(entities, source):
     rf_type = row_filter.get('type')
     rf_order_asc = False if rf_type in ['top', 'position'] else True
     rf_count = row_filter.get('count', 1)
+
     keywords = entities.get('keyword', [])
     columns += [k for k in keywords if k not in columns]
 
@@ -850,16 +856,13 @@ def get_gross_share(entities, source):
     condition_list, columns = get_conditions(entities, columns)
     #agg_func_list, columns = get_agg_functions(entities, columns)
     kpi_filter = entities.get('kpi_filter')
-    if isinstance(kpi_filter, list): kpi_filter = ''.join(kpi_filter)
-    #kpi_filter.replace('-', '_')
     if kpi_filter:
-        #kpi_abs = kpi_filter+'_gross'
-        if ('_10' in kpi_filter)  or ('_20' in kpi_filter): kpi_abs = '{}{}'.format(kpi_filter.replace('-', '_').strip(), '_abs_gross')
-        else:kpi_abs = kpi_filter+'_gross'
+        kpi_abs = kpi_filter+'_gross'
     else:
         kpi_abs = 'abs_gross'
 
     columns.append(kpi_abs)
+
     trend_exp = entities.get('trend_exp')
     if trend_exp:
         trend_exp['trend'] = trend_exp['trend'].strip()
@@ -1008,10 +1011,8 @@ def get_gross_share(entities, source):
                 if not kpi_filter:
                     _col_name = 'gross_share'
                 else:
-                    kpi_filter = kpi_filter.replace('_', '-')
                     _col_name = kpi_filter+'_gross_share'
                 print(_col_name)
-                _col_name = _col_name.title().replace('_', ' ')
                 data.rename(columns={'operator_name': _col_name}, inplace=True)
                 data.columns = beautify_columns(list(data.columns))
 
@@ -1044,17 +1045,7 @@ def get_gross_share(entities, source):
     return res
 
 def get_base_share_variance(entities, source):
-    value = entities.get('rel_exp')
-    try:
-        if isinstance(value, list): value = value[0].split(' ')[-1]
-    except: pass
-    operators, dict_ =  {'>':'gt', '<':'lt'}, {}
-    for k,v in operators.items():
-        if k in entities['category']:
-            dict_.update({'value':int(value),'operator':v})
     rel_exp = entities.get('rel_exp')
-    if dict_: rel_exp = dict_
-    if (rel_exp) and (not isinstance(rel_exp, list)): rel_exp = [rel_exp]
     if rel_exp:
         _rel_exp = []
         for exp in rel_exp:
@@ -1134,7 +1125,7 @@ def get_base_share_variance(entities, source):
             data = pd.DataFrame(data).reset_index(level=[0, 1], drop=True).reset_index()
 
         elif "geo_city_name" in columns:
-            b = table_sniper.groupby(['operator_name', 'geo_city_name', 'month', 'year', 'start_date'])[kpi_abs].sum()
+            b = table_sniper.groupby(['operator_name', 'geo_rgn_name', 'month', 'year', 'start_date'])[kpi_abs].sum()
             c = pd.DataFrame(b).groupby(level=[1, 2]).apply(lambda x : (x[kpi_abs]/sum(x[kpi_abs])*100))
             data = c.sort_index(level=[6]).groupby(level=[2, 3]).diff()
             data.name = 'base_share_variance'
@@ -1142,18 +1133,16 @@ def get_base_share_variance(entities, source):
 
         else:
             b = table_sniper.groupby(['operator_name', 'month', 'year', 'start_date'])[kpi_abs].sum()
-            d = pd.DataFrame(b).groupby(level=[1]).apply(lambda x : (x[kpi_abs]/sum(x[kpi_abs])*100))
-            data = d.sort_index(level=[4]).groupby(level=1).diff()
+            c = pd.DataFrame(b).groupby(level=[1]).apply(lambda x : (x[kpi_abs]/sum(x[kpi_abs])*100))
+            data = c.sort_index(level=[4]).groupby(level=1).diff()
             data.name = 'base_share_variance'
             data = pd.DataFrame(data).reset_index(level=[0], drop=True).reset_index()
-        if data.empty:
-            return error_mesg(get_resp_no_records())
+
         print(data.head(20))
         if conditions:
             _filters = modify_query('data', conditions)
             print(_filters)
             data = data.ix[eval(_filters)]
-            if data.empty:return error_mesg(get_resp_no_records())
         print(data.head(20))
 
         if chart_type:
@@ -1167,28 +1156,15 @@ def get_base_share_variance(entities, source):
             data = data.pivot_table(values=['base_share_variance'], columns=['start_date', 'month'], index=pivot_index, aggfunc=np.sum)
             data.columns = data.columns.droplevel([0, 1])
             data = data.reset_index()
-        try:
-            if entities['rel_exp'][0]['value'] == -1: data = pandas.DataFrame
-        except:pass
-        if data.empty: return error_mesg(get_resp_no_records())
+
         numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
         data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
         if rf_type == 'position': #get specific index
             data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
             data = data.to_frame().T
             data = data.apply(pd.to_numeric, errors='ignore') #convert all possible numeric columns to numeric
-        operators_ = entities.get('operator_name', '')
-        if (operators_) and (len(operators_) == 2):
-            data = data.set_index('operator_name')
-            data.loc['-'.join(operators_)]  = data.loc[operators_[0]]-data.loc[operators_[1]]
-            data = data.drop(data.index[[0,1]])
-            data.index.name=None
-            data.index.name = 'operator_name'
-            data.reset_index(inplace=True)
-        print('final:', data)
-        #if entities['rel_exp']['value'] == -1:
-           #data = pd.DataFrame
 
+        print('final:', data)
         data = data.round(2)
         data.fillna('-', inplace=True)
         print(kpi_filter+'_base_share_variance')
@@ -1224,17 +1200,7 @@ def get_base_share_variance(entities, source):
     return res
 
 def get_gross_share_variance(entities, source):
-    value = entities.get('rel_exp')
-    try:
-        if (value) and  (isinstance(value, list)): value = value[0].split(' ')[-1]
-    except: pass
-    operators, dict_ =  {'>':'gt', '<':'lt'}, {}
-    for k,v in operators.items():
-        if k in entities['category']:
-            dict_.update({'value':int(value),'operator':v})
     rel_exp = entities.get('rel_exp')
-    if dict_: rel_exp = dict_
-    if (rel_exp) and (not isinstance(rel_exp, list)): rel_exp = [rel_exp]
     if rel_exp:
         _rel_exp = []
         for exp in rel_exp:
@@ -1317,7 +1283,7 @@ def get_gross_share_variance(entities, source):
             data = pd.DataFrame(data).reset_index(level=[0, 1], drop=True).reset_index()
 
         elif "geo_city_name" in columns:
-            b = table_sniper.groupby(['operator_name', 'geo_city_name', 'month', 'year', 'start_date'])[kpi_abs].sum()
+            b = table_sniper.groupby(['operator_name', 'geo_rgn_name', 'month', 'year', 'start_date'])[kpi_abs].sum()
             c = pd.DataFrame(b).groupby(level=[1, 2]).apply(lambda x : (x[kpi_abs]/sum(x[kpi_abs])*100))
             data = c.sort_index(level=[6]).groupby(level=[2, 3]).diff()
             data.name = 'gross_share_variance'
@@ -1348,16 +1314,14 @@ def get_gross_share_variance(entities, source):
             data = data.pivot_table(values=['gross_share_variance'], columns=['start_date', 'month'], index=pivot_index, aggfunc=np.sum)
             data.columns = data.columns.droplevel([0, 1])
             data = data.reset_index()
-        try: 
-            if entities['rel_exp'][0]['value'] == -1: data = pandas.DataFrame
-        except: pass
-        if data.empty: return error_mesg(get_resp_no_records())
+
         numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
         data = data.sort_values(data.select_dtypes(include=numerics).columns.tolist(), ascending=rf_order_asc).head(rf_count)
         if rf_type == 'position': #get specific index
             data = data.iloc[rf_count - 1] # returns a series, need to convert to DataFrame
             data = data.to_frame().T
             data = data.apply(pd.to_numeric, errors='ignore') #convert all possible numeric columns to numeric
+
         print('final:', data)
         data = data.round(2)
         data.fillna('-', inplace=True)
